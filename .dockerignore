@@ -1,0 +1,31 @@
+### Git ###
+.git
+.github
+.gitignore
+
+### Gradle ###
+.gradle
+build
+
+### IDE ###
+.idea
+*.iml
+out
+
+### Environment ###
+.env
+.env.*
+
+### Local files ###
+storage
+logs
+
+### Documentation ###
+README.md
+HELP.md
+
+### Docker local ###
+docker-compose.local.yml
+
+### Test ###
+src/test

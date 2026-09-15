@@ -1,0 +1,29 @@
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3309/sujeongring?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:sujeongring}
+    password: ${DB_PASSWORD:sujeongring1234}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    show-sql: true
+
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+
+    open-in-view: false
+
+logging:
+  level:
+    root: info
+    org.hibernate.SQL: debug
+
