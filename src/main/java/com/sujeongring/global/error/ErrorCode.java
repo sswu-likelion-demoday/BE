@@ -5,6 +5,13 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ErrorCode {
+    //재학생 인증
+    AUTH_INVALID_VERIFICATION_CODE(HttpStatus.BAD_REQUEST, "AUTH_INVALID_VERIFICATION_CODE", "인증번호가 일치하지 않습니다."),
+    AUTH_VERIFICATION_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "AUTH_VERIFICATION_CODE_EXPIRED", "인증번호가 만료되었습니다."),
+
+    //학번 중복 검사
+    AUTH_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_EMAIL_NOT_VERIFIED", "이메일 인증이 필요합니다."),
+    AUTH_DUPLICATE_STUDENT_NUMBER(HttpStatus.CONFLICT, "AUTH_DUPLICATE_STUDENT_NUMBER", "이미 가입된 학번입니다."),
 
     // 400 Bad Request
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_400_1", "잘못된 입력값입니다."),
@@ -20,6 +27,7 @@ public enum ErrorCode {
 
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_500_1", "서버 내부 오류가 발생했습니다.");
+
 
     private final HttpStatus status;
     private final String code;

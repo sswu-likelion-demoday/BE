@@ -2,11 +2,13 @@ package com.sujeongring.global.error;
 
 import com.sujeongring.global.common.ApiResponse;
 import com.sujeongring.global.error.exception.BaseException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -48,6 +50,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+
+        log.error("Unhandled exception occurred", e);
+
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
 
         return ResponseEntity
