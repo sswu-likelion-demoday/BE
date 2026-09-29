@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleValidationException(
             MethodArgumentNotValidException e
     ) {
-        ErrorCode errorCode = ErrorCode.INVALID_INPUT_VALUE;
+        ErrorCode errorCode = CommonErrorCode.INVALID_INPUT_VALUE;
 
         String message = e.getBindingResult()
                 .getFieldErrors()
@@ -53,7 +53,7 @@ public class GlobalExceptionHandler {
 
         log.error("Unhandled exception occurred", e);
 
-        ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+        ErrorCode errorCode = CommonErrorCode.INTERNAL_SERVER_ERROR;
 
         return ResponseEntity
                 .status(errorCode.getStatus())

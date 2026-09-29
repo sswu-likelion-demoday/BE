@@ -13,6 +13,8 @@ import com.sujeongring.domain.auth.dto.request.SignupRequest;
 import com.sujeongring.domain.auth.dto.response.SignupResponse;
 import com.sujeongring.domain.auth.dto.response.StudentNumberCheckResponse;
 import com.sujeongring.domain.auth.service.AuthService;
+import com.sujeongring.domain.auth.dto.request.TokenReissueRequest;
+import com.sujeongring.domain.auth.dto.response.TokenResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -64,5 +66,18 @@ public class AuthController {
                 : "이미 사용 중인 학번입니다.";
 
         return ApiResponse.success(message, response);
+    }
+
+    @PostMapping("/reissue")
+    public ApiResponse<TokenResponse> reissue(
+            @Valid @RequestBody TokenReissueRequest request
+    ) {
+        TokenResponse response =
+                authService.reissue(request);
+
+        return ApiResponse.success(
+                "토큰을 재발급하였습니다.",
+                response
+        );
     }
 }
