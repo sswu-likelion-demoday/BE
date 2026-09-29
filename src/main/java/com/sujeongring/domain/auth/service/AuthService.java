@@ -8,7 +8,7 @@ import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.ErrorCode;
 import com.sujeongring.global.error.exception.BaseException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
+
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,8 +27,9 @@ public class AuthService {
      * 학번 중복 확인
      */
     @Transactional(readOnly = true)
-    public StudentNumberCheckResponse checkStudentNumber(String studentNumber) {
-
+    public StudentNumberCheckResponse checkStudentNumber(
+            String studentNumber
+    ) {
         boolean exists =
                 userRepository.existsByStudentId(studentNumber);
 
@@ -41,7 +42,9 @@ public class AuthService {
     @Transactional
     public SignupResponse signup(SignupRequest request) {
 
+
         // 이메일 인증 여부 확인
+
         String verifiedKey =
                 VERIFIED_KEY_PREFIX + request.email();
 
@@ -74,11 +77,11 @@ public class AuthService {
             );
         }
 
-        // 비밀번호 암호화
+        // 3. 비밀번호 암호화
         String encodedPassword =
                 passwordEncoder.encode(request.password());
 
-        // User 생성
+        // 4. User 생성
         User user = new User(
                 request.nickname(),
                 encodedPassword,
