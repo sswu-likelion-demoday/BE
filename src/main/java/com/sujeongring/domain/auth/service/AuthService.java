@@ -8,6 +8,7 @@ import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.ErrorCode;
 import com.sujeongring.global.error.exception.BaseException;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AuthService {
-
     private static final String VERIFIED_KEY_PREFIX = "email:verified:";
 
     private final UserRepository userRepository;
@@ -42,7 +42,9 @@ public class AuthService {
     @Transactional
     public SignupResponse signup(SignupRequest request) {
 
-        // 1. 이메일 인증 여부 확인
+
+        // 이메일 인증 여부 확인
+
         String verifiedKey =
                 VERIFIED_KEY_PREFIX + request.email();
 
@@ -55,10 +57,21 @@ public class AuthService {
             );
         }
 
-        // 2. 학번 중복 재확인
-        if (userRepository.existsByStudentId(
-                request.studentNumber()
-        )) {
+        // 이메일에 포함된 학번과 요청 학번 일치 확인
+        String emailStudentNumber =
+                request.email().substring(
+                        0,
+                        request.email().indexOf("@")
+                );
+
+        if (!emailStudentNumber.equals(request.studentNumber())) {
+            throw new BaseException(
+                    ErrorCode.AUTH_STUDENT_NUMBER_MISMATCH
+            );
+        }
+
+        // 학번 중복 재확인
+        if (userRepository.existsByStudentId(request.studentNumber())) {
             throw new BaseException(
                     ErrorCode.AUTH_DUPLICATE_STUDENT_NUMBER
             );
@@ -76,13 +89,13 @@ public class AuthService {
                 request.departmentId()
         );
 
-        // 5. DB 저장
+        // DB 저장
         User savedUser = userRepository.save(user);
 
-        // 6. 사용한 이메일 인증 상태 삭제
+        // 이메일 인증 정보 삭제
         redisTemplate.delete(verifiedKey);
 
-        // 7. 응답
+        // 응답
         return new SignupResponse(
                 savedUser.getId(),
                 savedUser.getNickname(),

@@ -1,4 +1,5 @@
-package com.sujeongring.domain.member.service;
+package com.sujeongring.domain.user.service;
 
-public class MemberService {
+public class UserService {
+
 }

@@ -65,4 +65,16 @@ public class AuthController {
 
         return ApiResponse.success(message, response);
     }
+
+    @PostMapping("/signup")
+    public ApiResponse<SignupResponse> signup(
+            @Valid @RequestBody SignupRequest request
+    ) {
+        SignupResponse response = authService.signup(request);
+
+        return ApiResponse.success(
+                "회원가입이 완료되었습니다.",
+                response
+        );
+    }
 }

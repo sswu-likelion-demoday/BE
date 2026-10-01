@@ -13,6 +13,10 @@ public enum ErrorCode {
     AUTH_EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, "AUTH_EMAIL_NOT_VERIFIED", "이메일 인증이 필요합니다."),
     AUTH_DUPLICATE_STUDENT_NUMBER(HttpStatus.CONFLICT, "AUTH_DUPLICATE_STUDENT_NUMBER", "이미 가입된 학번입니다."),
 
+    //이메일과 학번이 일치
+    AUTH_STUDENT_NUMBER_MISMATCH(HttpStatus.BAD_REQUEST, "AUTH_STUDENT_NUMBER_MISMATCH", "이메일과 학번이 일치하지 않습니다."),
+
+
     // 400 Bad Request
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "COMMON_400_1", "잘못된 입력값입니다."),
     INVALID_REQUEST_BODY(HttpStatus.BAD_REQUEST, "COMMON_400_2", "요청 본문을 확인해주세요."),
