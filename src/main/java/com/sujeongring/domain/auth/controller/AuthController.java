@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import com.sujeongring.domain.auth.dto.request.SignupRequest;
 import com.sujeongring.domain.auth.dto.response.SignupResponse;
+import com.sujeongring.domain.auth.dto.request.LoginRequest;
+import com.sujeongring.domain.auth.dto.response.LoginResponse;
 import com.sujeongring.domain.auth.dto.response.StudentNumberCheckResponse;
 import com.sujeongring.domain.auth.service.AuthService;
 import com.sujeongring.domain.auth.dto.request.TokenReissueRequest;
@@ -66,6 +68,35 @@ public class AuthController {
                 : "이미 사용 중인 학번입니다.";
 
         return ApiResponse.success(message, response);
+    }
+
+    @PostMapping("/signup")
+    public ApiResponse<SignupResponse> signup(
+            @Valid @RequestBody SignupRequest request
+    ) {
+
+        SignupResponse response =
+                authService.signup(request);
+
+        return ApiResponse.success(
+                "회원가입에 성공하였습니다.",
+                response
+        );
+    }
+
+
+    @PostMapping("/login")
+    public ApiResponse<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+
+        LoginResponse response =
+                authService.login(request);
+
+        return ApiResponse.success(
+                "로그인에 성공하였습니다.",
+                response
+        );
     }
 
     @PostMapping("/reissue")

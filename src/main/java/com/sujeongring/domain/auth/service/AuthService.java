@@ -11,6 +11,8 @@ import com.sujeongring.global.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import com.sujeongring.domain.auth.dto.request.TokenReissueRequest;
 import com.sujeongring.domain.auth.dto.response.TokenResponse;
+import com.sujeongring.domain.auth.dto.request.LoginRequest;
+import com.sujeongring.domain.auth.dto.response.LoginResponse;
 
 
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -103,6 +105,66 @@ public class AuthService {
         );
     }
 
+    /**
+     * 로그인
+     */
+    @Transactional(readOnly = true)
+    public LoginResponse login(LoginRequest request) {
+
+        // 학번 / 비밀번호 입력 확인
+        if (request.studentId() == null ||
+                request.studentId().isBlank() ||
+                request.password() == null ||
+                request.password().isBlank()) {
+
+            throw new BaseException(
+                    AuthErrorCode.INVALID_LOGIN_REQUEST
+            );
+        }
+
+        // 학번으로 사용자 조회
+        User user = userRepository.findByStudentId(request.studentId())
+                .orElseThrow(() ->
+                        new BaseException(
+                                AuthErrorCode.INVALID_CREDENTIALS
+                        )
+                );
+
+        // 비밀번호 확인
+        if (!passwordEncoder.matches(
+                request.password(),
+                user.getPassword()
+        )) {
+            throw new BaseException(
+                    AuthErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
+        // Access Token 발급
+        String accessToken =
+                jwtTokenProvider.createAccessToken(user.getId());
+
+        // Refresh Token 발급
+        String refreshToken =
+                jwtTokenProvider.createRefreshToken(user.getId());
+
+        // Refresh Token Redis 저장
+        refreshTokenService.save(
+                user.getId(),
+                refreshToken,
+                jwtTokenProvider.getRefreshTokenExpiration()
+        );
+
+        // 로그인 결과 반환
+        return new LoginResponse(
+                user.getId(),
+                user.getNickname(),
+                accessToken,
+                refreshToken,
+                user.isOnboardingCompleted()
+        );
+    }
+
 
     /**
      * Access Token / Refresh Token 재발급
@@ -112,17 +174,17 @@ public class AuthService {
 
         String refreshToken = request.refreshToken();
 
-        // 1. Refresh Token 유효성 및 만료 여부 검증
+        // Refresh Token 유효성 및 만료 여부 검증
         jwtTokenProvider.validateRefreshToken(refreshToken);
 
-        // 2. Refresh Token에서 userId 추출
+        // Refresh Token에서 userId 추출
         Long userId = jwtTokenProvider.getUserId(refreshToken);
 
-        // 3. Redis에 저장된 Refresh Token 조회
+        // Redis에 저장된 Refresh Token 조회
         String savedRefreshToken =
                 refreshTokenService.get(userId);
 
-        // 4. 저장된 Refresh Token 존재 여부 및 일치 여부 확인
+        // 저장된 Refresh Token 존재 여부 및 일치 여부 확인
         if (savedRefreshToken == null ||
                 !savedRefreshToken.equals(refreshToken)) {
 
@@ -131,15 +193,15 @@ public class AuthService {
             );
         }
 
-        // 5. 새로운 Access Token 발급
+        // 새로운 Access Token 발급
         String newAccessToken =
                 jwtTokenProvider.createAccessToken(userId);
 
-        // 6. 새로운 Refresh Token 발급
+        // 새로운 Refresh Token 발급
         String newRefreshToken =
                 jwtTokenProvider.createRefreshToken(userId);
 
-        // 7. 새로운 Refresh Token으로 교체
+        // 새로운 Refresh Token으로 교체
         refreshTokenService.save(
                 userId,
                 newRefreshToken,

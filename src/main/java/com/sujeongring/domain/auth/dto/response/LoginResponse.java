@@ -1,4 +1,10 @@
 package com.sujeongring.domain.auth.dto.response;
 
-public class LoginResponse {
+public record LoginResponse(
+        Long userId,
+        String nickname,
+        String accessToken,
+        String refreshToken,
+        boolean onboardingCompleted
+) {
 }

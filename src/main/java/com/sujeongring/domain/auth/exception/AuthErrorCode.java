@@ -35,10 +35,24 @@ public enum AuthErrorCode implements ErrorCode {
             "이메일과 학번이 일치하지 않습니다."
     ),
 
+    //회원가입
     DUPLICATE_STUDENT_NUMBER(
             HttpStatus.CONFLICT,
             "AUTH_DUPLICATE_STUDENT_NUMBER",
             "이미 가입된 학번입니다."
+    ),
+
+    //로그인
+    INVALID_LOGIN_REQUEST(
+            HttpStatus.BAD_REQUEST,
+            "AUTH_INVALID_LOGIN_REQUEST",
+            "학번과 비밀번호를 입력해주세요."
+    ),
+
+    INVALID_CREDENTIALS(
+            HttpStatus.UNAUTHORIZED,
+            "AUTH_INVALID_CREDENTIALS",
+            "학번 또는 비밀번호가 올바르지 않습니다."
     ),
 
     // JWT
