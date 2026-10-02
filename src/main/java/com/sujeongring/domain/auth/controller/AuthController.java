@@ -1,10 +1,6 @@
 package com.sujeongring.domain.auth.controller;
 
-import com.sujeongring.domain.auth.dto.request.EmailSendRequest;
-import com.sujeongring.domain.auth.dto.request.EmailVerifyRequest;
-import com.sujeongring.domain.auth.dto.request.LoginRequest;
-import com.sujeongring.domain.auth.dto.request.SignupRequest;
-import com.sujeongring.domain.auth.dto.request.TokenReissueRequest;
+import com.sujeongring.domain.auth.dto.request.*;
 import com.sujeongring.domain.auth.dto.response.EmailSendResponse;
 import com.sujeongring.domain.auth.dto.response.EmailVerifyResponse;
 import com.sujeongring.domain.auth.dto.response.LoginResponse;
@@ -105,6 +101,18 @@ public class AuthController {
         return ApiResponse.success(
                 "토큰을 재발급하였습니다.",
                 response
+        );
+    }
+
+    @PostMapping("/password/reset")
+    public ApiResponse<Void> resetPassword(
+            @Valid @RequestBody PasswordResetRequest request
+    ) {
+        authService.resetPassword(request);
+
+        return ApiResponse.success(
+                "비밀번호가 재설정되었습니다.",
+                null
         );
     }
 }
