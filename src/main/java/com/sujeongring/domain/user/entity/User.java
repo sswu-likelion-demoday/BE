@@ -11,11 +11,11 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "user",
+        name = "users",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_user_student_id",
-                        columnNames = "student_id"
+                        name = "uk_users_student_number",
+                        columnNames = "student_number"
                 )
         }
 )
@@ -26,29 +26,33 @@ public class User {
     @Column(name = "user_id")
     private Long id;
 
+    @Column(nullable = false, length = 20)
+    private String name;
+
     @Column(nullable = false, length = 30)
     private String nickname;
 
     @Column(nullable = false, length = 255)
     private String password;
 
-    @Column(name = "student_id", nullable = false, unique = true, length = 20)
-    private String studentId;
+    @Column(name = "student_number", nullable = false, length = 20)
+    private String studentNumber;
+
+    @Column(name = "department_name", nullable = false, length = 50)
+    private String departmentName;
 
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 4)
-    private String mbti;
+    private MbtiType mbti;
 
-    @Column(name = "meeting_style", length = 20)
-    private String meetingStyle;
+    @Column(length = 255)
+    private String contact;
 
     @Column(name = "onboarding_completed", nullable = false)
     private boolean onboardingCompleted = false;
-
-    @Column(name = "department_id", nullable = false)
-    private Long departmentId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -57,15 +61,17 @@ public class User {
     private LocalDateTime updatedAt;
 
     public User(
+            String name,
             String nickname,
             String password,
-            String studentId,
-            Long departmentId
+            String studentNumber,
+            String departmentName
     ) {
+        this.name = name;
         this.nickname = nickname;
         this.password = password;
-        this.studentId = studentId;
-        this.departmentId = departmentId;
+        this.studentNumber = studentNumber;
+        this.departmentName = departmentName;
         this.onboardingCompleted = false;
     }
 
