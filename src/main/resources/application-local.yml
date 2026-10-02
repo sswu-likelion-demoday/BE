@@ -5,8 +5,8 @@ spring:
 
   datasource:
     url: ${DB_URL:jdbc:mysql://localhost:3309/sujeongring?serverTimezone=Asia/Seoul&characterEncoding=UTF-8}
-    username: ${DB_USERNAME:sujeongring}
-    password: ${DB_PASSWORD:sujeongring1234}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   # Redis
@@ -14,6 +14,21 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
+  # Gmail SMTP
+  mail:
+    host: smtp.gmail.com
+    port: 587
+
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
   jpa:
     hibernate:
@@ -31,5 +46,4 @@ spring:
 logging:
   level:
     root: info
-    org.hibernate.SQL: debugs
-
+    org.hibernate.SQL: debug
