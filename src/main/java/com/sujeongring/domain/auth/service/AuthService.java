@@ -31,7 +31,7 @@ public class AuthService {
             String studentNumber
     ) {
         boolean exists =
-                userRepository.existsByStudentId(studentNumber);
+                userRepository.existsByStudentNumber(studentNumber);
 
         return new StudentNumberCheckResponse(!exists);
     }
@@ -71,7 +71,7 @@ public class AuthService {
         }
 
         // 학번 중복 재확인
-        if (userRepository.existsByStudentId(request.studentNumber())) {
+        if (userRepository.existsByStudentNumber(request.studentNumber())) {
             throw new BaseException(
                     ErrorCode.AUTH_DUPLICATE_STUDENT_NUMBER
             );
@@ -83,10 +83,11 @@ public class AuthService {
 
         // 4. User 생성
         User user = new User(
+                request.name(),
                 request.nickname(),
                 encodedPassword,
                 request.studentNumber(),
-                request.departmentId()
+                request.departmentName()
         );
 
         // DB 저장
