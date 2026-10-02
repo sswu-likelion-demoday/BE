@@ -12,6 +12,7 @@ import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.exception.BaseException;
 import com.sujeongring.global.jwt.JwtTokenProvider;
+import com.sujeongring.domain.auth.dto.request.PasswordResetRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -191,5 +192,57 @@ public class AuthService {
                 newAccessToken,
                 newRefreshToken
         );
+    }
+
+    /**
+     * 비밀번호 재설정
+     */
+    @Transactional
+    public void resetPassword(PasswordResetRequest request) {
+
+        // 이메일 인증 여부 확인
+        String verifiedKey =
+                VERIFIED_KEY_PREFIX + request.email();
+
+        String verified =
+                redisTemplate.opsForValue().get(verifiedKey);
+
+        if (!"true".equals(verified)) {
+            throw new BaseException(
+                    AuthErrorCode.EMAIL_NOT_VERIFIED
+            );
+        }
+
+        // 이메일의 학번과 입력한 학번이 같은지 확인
+        String emailStudentNumber =
+                request.email().substring(
+                        0,
+                        request.email().indexOf("@")
+                );
+
+        if (!emailStudentNumber.equals(request.studentNumber())) {
+            throw new BaseException(
+                    AuthErrorCode.STUDENT_NUMBER_MISMATCH
+            );
+        }
+
+        // 가입된 사용자 조회
+        User user = userRepository
+                .findByStudentNumber(request.studentNumber())
+                .orElseThrow(() ->
+                        new BaseException(
+                                AuthErrorCode.USER_NOT_FOUND
+                        )
+                );
+
+        // 새 비밀번호 암호화
+        String encodedPassword =
+                passwordEncoder.encode(request.newPassword());
+
+        // 비밀번호 변경
+        user.changePassword(encodedPassword);
+
+        // 인증 정보 삭제
+        redisTemplate.delete(verifiedKey);
     }
 }
