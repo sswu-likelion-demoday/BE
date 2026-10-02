@@ -2,17 +2,21 @@ package com.sujeongring.domain.auth.controller;
 
 import com.sujeongring.domain.auth.dto.request.EmailSendRequest;
 import com.sujeongring.domain.auth.dto.request.EmailVerifyRequest;
+import com.sujeongring.domain.auth.dto.request.LoginRequest;
+import com.sujeongring.domain.auth.dto.request.SignupRequest;
+import com.sujeongring.domain.auth.dto.request.TokenReissueRequest;
 import com.sujeongring.domain.auth.dto.response.EmailSendResponse;
 import com.sujeongring.domain.auth.dto.response.EmailVerifyResponse;
+import com.sujeongring.domain.auth.dto.response.LoginResponse;
+import com.sujeongring.domain.auth.dto.response.SignupResponse;
+import com.sujeongring.domain.auth.dto.response.StudentNumberCheckResponse;
+import com.sujeongring.domain.auth.dto.response.TokenResponse;
+import com.sujeongring.domain.auth.service.AuthService;
 import com.sujeongring.domain.auth.service.EmailVerificationService;
 import com.sujeongring.global.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import com.sujeongring.domain.auth.dto.request.SignupRequest;
-import com.sujeongring.domain.auth.dto.response.SignupResponse;
-import com.sujeongring.domain.auth.dto.response.StudentNumberCheckResponse;
-import com.sujeongring.domain.auth.service.AuthService;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,7 +30,6 @@ public class AuthController {
     public ApiResponse<EmailSendResponse> sendEmail(
             @Valid @RequestBody EmailSendRequest request
     ) {
-
         EmailSendResponse response =
                 emailVerificationService.sendVerificationCode(request.email());
 
@@ -70,10 +73,37 @@ public class AuthController {
     public ApiResponse<SignupResponse> signup(
             @Valid @RequestBody SignupRequest request
     ) {
-        SignupResponse response = authService.signup(request);
+        SignupResponse response =
+                authService.signup(request);
 
         return ApiResponse.success(
                 "회원가입이 완료되었습니다.",
+                response
+        );
+    }
+
+    @PostMapping("/login")
+    public ApiResponse<LoginResponse> login(
+            @Valid @RequestBody LoginRequest request
+    ) {
+        LoginResponse response =
+                authService.login(request);
+
+        return ApiResponse.success(
+                "로그인에 성공하였습니다.",
+                response
+        );
+    }
+
+    @PostMapping("/reissue")
+    public ApiResponse<TokenResponse> reissue(
+            @Valid @RequestBody TokenReissueRequest request
+    ) {
+        TokenResponse response =
+                authService.reissue(request);
+
+        return ApiResponse.success(
+                "토큰을 재발급하였습니다.",
                 response
         );
     }

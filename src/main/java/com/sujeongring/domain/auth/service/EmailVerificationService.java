@@ -1,6 +1,7 @@
 package com.sujeongring.domain.auth.service;
 
 import com.sujeongring.domain.auth.dto.response.EmailSendResponse;
+import com.sujeongring.domain.auth.exception.AuthErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -82,14 +83,14 @@ public class EmailVerificationService {
         // 인증번호가 존재하지 않음 = 만료
         if (savedCode == null) {
             throw new BaseException(
-                    ErrorCode.AUTH_VERIFICATION_CODE_EXPIRED
+                    AuthErrorCode.VERIFICATION_CODE_EXPIRED
             );
         }
 
         // 인증번호 불일치
         if (!savedCode.equals(inputCode)) {
             throw new BaseException(
-                    ErrorCode.AUTH_INVALID_VERIFICATION_CODE
+                    AuthErrorCode.INVALID_VERIFICATION_CODE
             );
         }
 
