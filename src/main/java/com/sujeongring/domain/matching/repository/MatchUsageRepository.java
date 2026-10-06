@@ -1,7 +1,7 @@
 package com.sujeongring.domain.matching.repository;
 
 import com.sujeongring.domain.matching.entity.MatchUsage;
-import com.sujeongring.domain.matching.entity.MatchUsageType;
+import com.sujeongring.domain.matching.enums.MatchUsageType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;

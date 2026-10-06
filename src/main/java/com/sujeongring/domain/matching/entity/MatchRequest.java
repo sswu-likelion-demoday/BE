@@ -1,5 +1,6 @@
 package com.sujeongring.domain.matching.entity;
 
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -20,11 +21,8 @@ public class MatchRequest {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "recommendation_candidate_id",
-            nullable = false
-    )
-    private MatchRecommendationCandidate recommendationCandidate;
+    @JoinColumn(name = "match_recommendation_id", nullable = false)
+    private MatchRecommendation matchRecommendation;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
@@ -47,12 +45,19 @@ public class MatchRequest {
     @Column(name = "responded_at")
     private LocalDateTime respondedAt;
 
+    @Column(name = "canceled_at")
+    private LocalDateTime canceledAt;
+
+    // 보낸 사용자가 수락 결과를 확인한 시점
+    @Column(name = "sender_confirmed_at")
+    private LocalDateTime senderConfirmedAt;
+
     public MatchRequest(
-            MatchRecommendationCandidate recommendationCandidate,
+            MatchRecommendation matchRecommendation,
             User sender,
             User receiver
     ) {
-        this.recommendationCandidate = recommendationCandidate;
+        this.matchRecommendation = matchRecommendation;
         this.sender = sender;
         this.receiver = receiver;
         this.status = MatchRequestStatus.PENDING;
@@ -70,18 +75,20 @@ public class MatchRequest {
 
     public void cancel() {
         this.status = MatchRequestStatus.CANCELED;
-        this.respondedAt = LocalDateTime.now();
+        this.canceledAt = LocalDateTime.now();
     }
 
     public void expire() {
         this.status = MatchRequestStatus.EXPIRED;
-        this.respondedAt = LocalDateTime.now();
+    }
+
+    public void confirmBySender() {
+        this.senderConfirmedAt = LocalDateTime.now();
     }
 
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
-
         this.createdAt = now;
         this.expiresAt = now.plusDays(3);
     }

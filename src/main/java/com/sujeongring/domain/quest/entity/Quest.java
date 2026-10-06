@@ -1,5 +1,7 @@
 package com.sujeongring.domain.quest.entity;
 
+import com.sujeongring.domain.quest.enums.QuestCompletionType;
+import com.sujeongring.domain.quest.enums.QuestType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

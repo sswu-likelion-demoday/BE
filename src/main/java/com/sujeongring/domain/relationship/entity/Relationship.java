@@ -1,6 +1,7 @@
 package com.sujeongring.domain.relationship.entity;
 
 import com.sujeongring.domain.matching.entity.MatchRequest;
+import com.sujeongring.domain.relationship.enums.RelationshipStatus;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;

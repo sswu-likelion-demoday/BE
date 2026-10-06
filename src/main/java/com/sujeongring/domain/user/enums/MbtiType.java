@@ -1,4 +1,4 @@
-package com.sujeongring.domain.user.entity;
+package com.sujeongring.domain.user.enums;
 
 public enum MbtiType {
     INTJ, INTP, ENTJ, ENTP,

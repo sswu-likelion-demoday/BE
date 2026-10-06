@@ -1,4 +1,4 @@
-package com.sujeongring.domain.chat.entity;
+package com.sujeongring.domain.chat.enums;
 
 public enum MessageType {
     TEXT,

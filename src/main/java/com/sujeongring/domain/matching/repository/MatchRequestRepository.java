@@ -1,7 +1,7 @@
 package com.sujeongring.domain.matching.repository;
 
 import com.sujeongring.domain.matching.entity.MatchRequest;
-import com.sujeongring.domain.matching.entity.MatchRequestStatus;
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

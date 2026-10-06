@@ -1,5 +1,6 @@
 package com.sujeongring.domain.quest.entity;
 
+import com.sujeongring.domain.quest.enums.AiQuizStatus;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -11,7 +12,18 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "ai_quizzes")
+@Table(
+        name = "ai_quizzes",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_ai_quizzes_quest_answer_user",
+                        columnNames = {
+                                "relationship_quest_id",
+                                "answer_user_id"
+                        }
+                )
+        }
+)
 public class AiQuiz {
 
     @Id
@@ -19,12 +31,8 @@ public class AiQuiz {
     @Column(name = "ai_quiz_id")
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(
-            name = "relationship_quest_id",
-            nullable = false,
-            unique = true
-    )
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "relationship_quest_id", nullable = false)
     private RelationshipQuest relationshipQuest;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -1,5 +1,7 @@
 package com.sujeongring.domain.currency.entity;
 
+import com.sujeongring.domain.currency.enums.CurrencyReason;
+import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

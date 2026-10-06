@@ -1,5 +1,7 @@
 package com.sujeongring.domain.user.entity;
 
+import com.sujeongring.domain.user.enums.MbtiType;
+import com.sujeongring.domain.user.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -53,6 +55,10 @@ public class User {
 
     @Column(name = "onboarding_completed", nullable = false)
     private boolean onboardingCompleted = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

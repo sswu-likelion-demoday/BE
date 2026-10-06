@@ -1,5 +1,7 @@
 package com.sujeongring.domain.matching.entity;
 
+import com.sujeongring.domain.matching.enums.MatchUsageType;
+import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -23,9 +25,13 @@ public class MatchUsage {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "matching_type", nullable = false, length = 10)
-    private MatchingType matchingType;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "match_recommendation_id",
+            nullable = false,
+            unique = true
+    )
+    private MatchRecommendation matchRecommendation;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "usage_type", nullable = false, length = 10)
@@ -36,11 +42,11 @@ public class MatchUsage {
 
     public MatchUsage(
             User user,
-            MatchingType matchingType,
+            MatchRecommendation matchRecommendation,
             MatchUsageType usageType
     ) {
         this.user = user;
-        this.matchingType = matchingType;
+        this.matchRecommendation = matchRecommendation;
         this.usageType = usageType;
     }
 

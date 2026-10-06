@@ -1,4 +1,4 @@
-package com.sujeongring.domain.currency.entity;
+package com.sujeongring.domain.currency.enums;
 
 public enum CurrencyReason {
     QUEST_REWARD,

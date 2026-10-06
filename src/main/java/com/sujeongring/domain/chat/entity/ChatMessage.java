@@ -1,5 +1,6 @@
 package com.sujeongring.domain.chat.entity;
 
+import com.sujeongring.domain.chat.enums.MessageType;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -31,18 +32,11 @@ public class ChatMessage {
     @Column(name = "message_type", nullable = false, length = 20)
     private MessageType messageType;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "system_type", length = 30)
-    private SystemMessageType systemType;
-
     @Column(columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "image_url", length = 500)
     private String imageUrl;
-
-    @Column(name = "reference_id")
-    private Long referenceId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -51,18 +45,14 @@ public class ChatMessage {
             ChatRoom chatRoom,
             User sender,
             MessageType messageType,
-            SystemMessageType systemType,
             String content,
-            String imageUrl,
-            Long referenceId
+            String imageUrl
     ) {
         this.chatRoom = chatRoom;
         this.sender = sender;
         this.messageType = messageType;
-        this.systemType = systemType;
         this.content = content;
         this.imageUrl = imageUrl;
-        this.referenceId = referenceId;
     }
 
     @PrePersist

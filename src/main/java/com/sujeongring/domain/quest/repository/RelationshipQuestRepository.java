@@ -1,7 +1,7 @@
 package com.sujeongring.domain.quest.repository;
 
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
-import com.sujeongring.domain.quest.entity.RelationshipQuestStatus;
+import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

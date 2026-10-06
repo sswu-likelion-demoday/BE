@@ -1,4 +1,4 @@
-package com.sujeongring.domain.matching.entity;
+package com.sujeongring.domain.matching.enums;
 
 public enum MatchingType {
     NORMAL,

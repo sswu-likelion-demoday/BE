@@ -1,5 +1,6 @@
 package com.sujeongring.domain.user.entity;
 
+import com.sujeongring.domain.user.enums.CalendarType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

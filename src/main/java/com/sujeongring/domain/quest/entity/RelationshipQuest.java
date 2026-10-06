@@ -1,5 +1,6 @@
 package com.sujeongring.domain.quest.entity;
 
+import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
