@@ -1,5 +1,6 @@
 package com.sujeongring.domain.chat.service;
 
+import com.sujeongring.domain.chat.dto.response.ChatRoomDetailResponse;
 import com.sujeongring.domain.chat.dto.response.ChatRoomListResponse;
 import com.sujeongring.domain.chat.entity.ChatMessage;
 import com.sujeongring.domain.chat.entity.ChatReadStatus;
@@ -12,6 +13,9 @@ import com.sujeongring.domain.chat.repository.ChatRoomRepository;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
 import com.sujeongring.domain.user.entity.User;
+import com.sujeongring.domain.quest.entity.RelationshipQuest;
+import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
+import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +32,7 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final ChatReadStatusRepository chatReadStatusRepository;
+    private final RelationshipQuestRepository relationshipQuestRepository;
 
     public ChatRoomListResponse getChatRooms(Long userId) {
 
@@ -70,6 +75,107 @@ public class ChatRoomService {
                 activeCount,
                 completedCount,
                 chatRooms
+        );
+    }
+
+    public ChatRoomDetailResponse getChatRoom(
+            Long chatRoomId,
+            Long userId
+    ) {
+        ChatRoom chatRoom = chatRoomRepository
+                .findDetailById(chatRoomId)
+                .orElseThrow(() -> new ChatException(
+                        ChatErrorCode.CHAT_ROOM_NOT_FOUND
+                ));
+
+        Relationship relationship = chatRoom.getRelationship();
+
+        // 채팅방 참여자인지 검증
+        User partner = getPartner(relationship, userId);
+
+        // 종료된 관계는 더 이상 접근할 수 없음
+        if (relationship.getStatus() == RelationshipStatus.ENDED) {
+            throw new ChatException(
+                    ChatErrorCode.CHAT_ROOM_ENDED
+            );
+        }
+
+        boolean profileImageUnlocked =
+                isProfileImageUnlocked(relationship);
+
+        ChatRoomDetailResponse.Partner partnerResponse =
+                new ChatRoomDetailResponse.Partner(
+                        partner.getId(),
+                        partner.getNickname(),
+                        profileImageUnlocked
+                                ? partner.getProfileImageUrl()
+                                : null,
+                        profileImageUnlocked
+                );
+
+        // 완료된 관계는 채팅 기록만 읽을 수 있음
+        if (relationship.getStatus() == RelationshipStatus.COMPLETED) {
+            return new ChatRoomDetailResponse(
+                    chatRoom.getId(),
+                    relationship.getId(),
+                    partnerResponse,
+                    relationship.getStatus(),
+                    false,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        int currentStage = relationship.getCurrentStage();
+
+        List<RelationshipQuest> currentStageQuests =
+                relationshipQuestRepository
+                        .findByRelationshipIdAndStage(
+                                relationship.getId(),
+                                currentStage
+                        );
+
+        int completedCount = (int) currentStageQuests.stream()
+                .filter(quest ->
+                        quest.getStatus()
+                                == RelationshipQuestStatus.COMPLETED)
+                .count();
+
+        RelationshipQuest activeQuest =
+                currentStageQuests.stream()
+                        .filter(quest ->
+                                quest.getStatus()
+                                        == RelationshipQuestStatus.ACTIVE)
+                        .findFirst()
+                        .orElse(null);
+
+        ChatRoomDetailResponse.CurrentQuest currentQuest =
+                activeQuest == null
+                        ? null
+                        : new ChatRoomDetailResponse.CurrentQuest(
+                        activeQuest.getId(),
+                        activeQuest.getQuest().getTitle(),
+                        activeQuest.getQuest().getQuestType()
+                );
+
+        return new ChatRoomDetailResponse(
+                chatRoom.getId(),
+                relationship.getId(),
+                partnerResponse,
+                relationship.getStatus(),
+                true,
+                new ChatRoomDetailResponse.Stage(
+                        currentStage,
+                        getStageName(currentStage)
+                ),
+                new ChatRoomDetailResponse.QuestProgress(
+                        completedCount,
+                        currentStageQuests.size()
+                ),
+                currentQuest,
+                getUnlockGuideMessage(currentStage)
         );
     }
 
@@ -199,5 +305,15 @@ public class ChatRoomService {
             ChatRoomListResponse.ChatRoomSummary response,
             LocalDateTime sortTime
     ) {
+    }
+
+    private String getUnlockGuideMessage(int stage) {
+        return switch (stage) {
+            case 1 -> "1단계를 마치면 상대의 관심사가 열려요";
+            case 2 -> "2단계를 마치면 상대의 취미 · MBTI가 열려요";
+            case 3 -> "3단계를 마치면 상대의 이름 · 학번 · 학과 · 프로필 사진이 열려요";
+            case 4 -> "4단계를 마치면 상대의 외부 연락 수단이 열려요";
+            default -> null;
+        };
     }
 }
