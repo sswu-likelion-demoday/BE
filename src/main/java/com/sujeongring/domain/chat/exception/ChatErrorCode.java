@@ -33,6 +33,12 @@ public enum ChatErrorCode implements ErrorCode {
             "메시지를 찾을 수 없습니다."
     ),
 
+    CHAT_READ_STATUS_NOT_FOUND(
+            HttpStatus.CONFLICT,
+            "CHAT_READ_STATUS_NOT_FOUND",
+            "채팅방 읽음 상태가 존재하지 않습니다."
+    ),
+
     CHAT_ROOM_ENDED(
             HttpStatus.CONFLICT,
         "CHAT_ROOM_ENDED",

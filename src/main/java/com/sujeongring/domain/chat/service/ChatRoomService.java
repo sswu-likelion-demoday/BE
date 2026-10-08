@@ -226,8 +226,8 @@ public class ChatRoomService {
                         userId
                 )
                 .orElseThrow(() ->
-                        new IllegalStateException(
-                                "채팅방 읽음 상태가 존재하지 않습니다."
+                        new ChatException(
+                                ChatErrorCode.CHAT_READ_STATUS_NOT_FOUND
                         )
                 );
 
