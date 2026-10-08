@@ -37,6 +37,12 @@ public enum ChatErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
         "CHAT_ROOM_ENDED",
                 "종료된 관계의 채팅방에는 접근할 수 없습니다."
+    ),
+
+    INVALID_MESSAGE_PAGE_SIZE(
+            HttpStatus.BAD_REQUEST,
+            "INVALID_MESSAGE_PAGE_SIZE",
+            "메시지 조회 개수는 1개 이상 100개 이하여야 합니다."
     );
 
     private final HttpStatus status;
