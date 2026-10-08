@@ -1,5 +1,6 @@
 package com.sujeongring.domain.chat.controller;
 
+import com.sujeongring.domain.chat.dto.request.ChatReadRequest;
 import com.sujeongring.domain.chat.dto.response.ChatMessageListResponse;
 import com.sujeongring.domain.chat.dto.response.ChatRoomDetailResponse;
 import com.sujeongring.domain.chat.dto.response.ChatRoomListResponse;
@@ -7,6 +8,7 @@ import com.sujeongring.domain.chat.service.ChatMessageService;
 import com.sujeongring.domain.chat.service.ChatRoomService;
 import com.sujeongring.global.common.ApiResponse;
 import com.sujeongring.global.auth.CurrentUserId;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,5 +69,20 @@ public class ChatRoomController {
                 "메시지 내역을 조회하였습니다.",
                 response
         );
+    }
+
+    @PatchMapping("/{chatRoomId}/read")
+    public ApiResponse<Void> markAsRead(
+            @PathVariable Long chatRoomId,
+            @CurrentUserId Long userId,
+            @Valid @RequestBody ChatReadRequest request
+    ) {
+        chatRoomService.markAsRead(
+                chatRoomId,
+                userId,
+                request.lastReadMessageId()
+        );
+
+        return ApiResponse.ok();
     }
 }

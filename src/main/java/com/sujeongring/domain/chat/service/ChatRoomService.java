@@ -196,6 +196,54 @@ public class ChatRoomService {
         return chatRoom;
     }
 
+    @Transactional
+    public void markAsRead(
+            Long chatRoomId,
+            Long userId,
+            Long lastReadMessageId
+    ) {
+        // 채팅방 존재 + 참여자 + ENDED 여부 검증
+        getAccessibleChatRoom(chatRoomId, userId);
+
+        // 실제 이 채팅방에 속한 메시지인지 확인
+        ChatMessage lastReadMessage = chatMessageRepository
+                .findById(lastReadMessageId)
+                .orElseThrow(() ->
+                        new ChatException(
+                                ChatErrorCode.CHAT_MESSAGE_NOT_FOUND
+                        )
+                );
+
+        if (!lastReadMessage.getChatRoom().getId().equals(chatRoomId)) {
+            throw new ChatException(
+                    ChatErrorCode.CHAT_MESSAGE_NOT_FOUND
+            );
+        }
+
+        ChatReadStatus readStatus = chatReadStatusRepository
+                .findByChatRoomIdAndUserId(
+                        chatRoomId,
+                        userId
+                )
+                .orElseThrow(() ->
+                        new IllegalStateException(
+                                "채팅방 읽음 상태가 존재하지 않습니다."
+                        )
+                );
+
+        ChatMessage currentLastRead =
+                readStatus.getLastReadMessage();
+
+        // 읽음 위치가 뒤로 돌아가지 않도록 함
+        if (currentLastRead == null
+                || lastReadMessage.getId() > currentLastRead.getId()) {
+
+            readStatus.updateLastReadMessage(
+                    lastReadMessage
+            );
+        }
+    }
+
     private ChatRoomSummaryWithSortTime toSummary(
             ChatRoom chatRoom,
             Long userId
