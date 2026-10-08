@@ -1,6 +1,8 @@
 package com.sujeongring.global.websocket;
 
 import com.sujeongring.domain.auth.exception.AuthErrorCode;
+import com.sujeongring.domain.chat.exception.ChatErrorCode;
+import com.sujeongring.domain.chat.service.ChatRoomService;
 import com.sujeongring.global.error.exception.BaseException;
 import com.sujeongring.global.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,7 @@ import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 import java.util.Collections;
@@ -21,6 +24,7 @@ import java.util.Collections;
 public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
     private static final String BEARER_PREFIX = "Bearer ";
+    private final ChatRoomService chatRoomService;
 
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -41,6 +45,10 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
             authenticate(accessor);
+        }
+
+        if (StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {
+            authorizeSubscribe(accessor);
         }
 
         return message;
@@ -73,5 +81,44 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
                 );
 
         accessor.setUser(authentication);
+    }
+
+    private void authorizeSubscribe(StompHeaderAccessor accessor) {
+
+        String destination = accessor.getDestination();
+
+        if (destination == null) {
+            return;
+        }
+
+        // 채팅방 구독일 때만 검사
+        if (!destination.startsWith("/sub/chat/")) {
+            return;
+        }
+
+        Authentication authentication =
+                (Authentication) accessor.getUser();
+
+        if (authentication == null) {
+            throw new BaseException(AuthErrorCode.UNAUTHORIZED);
+        }
+
+        Long userId = (Long) authentication.getPrincipal();
+
+        String chatRoomIdValue =
+                destination.substring("/sub/chat/".length());
+
+        Long chatRoomId;
+
+        try {
+            chatRoomId = Long.valueOf(chatRoomIdValue);
+        } catch (NumberFormatException e) {
+            throw new BaseException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+        }
+
+        chatRoomService.getAccessibleChatRoom(
+                chatRoomId,
+                userId
+        );
     }
 }

@@ -82,23 +82,11 @@ public class ChatRoomService {
             Long chatRoomId,
             Long userId
     ) {
-        ChatRoom chatRoom = chatRoomRepository
-                .findDetailById(chatRoomId)
-                .orElseThrow(() -> new ChatException(
-                        ChatErrorCode.CHAT_ROOM_NOT_FOUND
-                ));
+        ChatRoom chatRoom = getAccessibleChatRoom(chatRoomId, userId);
 
         Relationship relationship = chatRoom.getRelationship();
 
-        // 채팅방 참여자인지 검증
         User partner = getPartner(relationship, userId);
-
-        // 종료된 관계는 더 이상 접근할 수 없음
-        if (relationship.getStatus() == RelationshipStatus.ENDED) {
-            throw new ChatException(
-                    ChatErrorCode.CHAT_ROOM_ENDED
-            );
-        }
 
         boolean profileImageUnlocked =
                 isProfileImageUnlocked(relationship);
@@ -177,6 +165,35 @@ public class ChatRoomService {
                 currentQuest,
                 getUnlockGuideMessage(currentStage)
         );
+    }
+
+    @Transactional(readOnly = true)
+    public ChatRoom getAccessibleChatRoom(Long chatRoomId, Long userId) {
+        ChatRoom chatRoom = chatRoomRepository
+                .findDetailById(chatRoomId)
+                .orElseThrow(() -> new ChatException(
+                        ChatErrorCode.CHAT_ROOM_NOT_FOUND
+                ));
+
+        Relationship relationship = chatRoom.getRelationship();
+
+        boolean isParticipant =
+                relationship.getUserA().getId().equals(userId)
+                        || relationship.getUserB().getId().equals(userId);
+
+        if (!isParticipant) {
+            throw new ChatException(
+                    ChatErrorCode.CHAT_ROOM_ACCESS_DENIED
+            );
+        }
+
+        if (relationship.getStatus() == RelationshipStatus.ENDED) {
+            throw new ChatException(
+                    ChatErrorCode.CHAT_ROOM_ENDED
+            );
+        }
+
+        return chatRoom;
     }
 
     private ChatRoomSummaryWithSortTime toSummary(
