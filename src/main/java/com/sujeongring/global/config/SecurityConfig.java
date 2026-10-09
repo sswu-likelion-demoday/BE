@@ -36,6 +36,7 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
+                .cors(cors -> {})
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
@@ -55,6 +56,11 @@ public class SecurityConfig {
                         // 회원가입 / 로그인 / 이메일 인증
                         .requestMatchers(
                                 "/auth/**"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                "/ws",
+                                "/ws/**"
                         ).permitAll()
 
                         // 나머지는 일단 인증 필요
