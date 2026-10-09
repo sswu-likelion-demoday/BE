@@ -84,6 +84,13 @@ public enum AuthErrorCode implements ErrorCode {
             HttpStatus.UNAUTHORIZED,
             "AUTH_REFRESH_TOKEN_MISMATCH",
             "Refresh Token이 일치하지 않습니다."
+    ),
+
+    // 비밀번호 재설정
+    USER_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "AUTH_USER_NOT_FOUND",
+            "가입된 사용자를 찾을 수 없습니다."
     );
 
     private final HttpStatus status;
