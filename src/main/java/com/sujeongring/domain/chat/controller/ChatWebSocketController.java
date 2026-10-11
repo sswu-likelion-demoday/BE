@@ -1,7 +1,9 @@
 package com.sujeongring.domain.chat.controller;
 
 import com.sujeongring.domain.chat.dto.request.ChatMessageSendRequest;
+import com.sujeongring.domain.chat.dto.response.ChatEventResponse;
 import com.sujeongring.domain.chat.dto.response.ChatMessageResponse;
+import com.sujeongring.domain.chat.dto.response.ChatSendResult;
 import com.sujeongring.domain.chat.service.ChatMessageService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,16 +29,37 @@ public class ChatWebSocketController {
     ) {
         Long userId = (Long) authentication.getPrincipal();
 
-        ChatMessageResponse response =
+        ChatSendResult result =
                 chatMessageService.sendTextMessage(
                         chatRoomId,
                         userId,
                         request.content()
                 );
 
+        // 1. 사용자가 보낸 TEXT
         messagingTemplate.convertAndSend(
                 "/sub/chat/" + chatRoomId,
-                response
+                result.message()
         );
+
+        // 2. 퀘스트 완료 SYSTEM 메시지
+        for (ChatMessageResponse systemMessage
+                : result.systemMessages()) {
+
+            messagingTemplate.convertAndSend(
+                    "/sub/chat/" + chatRoomId,
+                    systemMessage
+            );
+        }
+
+        // 3. 프론트 UI 이벤트
+        for (ChatEventResponse event
+                : result.events()) {
+
+            messagingTemplate.convertAndSend(
+                    "/sub/chat/" + chatRoomId + "/events",
+                    event
+            );
+        }
     }
 }
