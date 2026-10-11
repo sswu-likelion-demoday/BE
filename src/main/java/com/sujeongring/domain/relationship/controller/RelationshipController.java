@@ -1,5 +1,6 @@
 package com.sujeongring.domain.relationship.controller;
 
+import com.sujeongring.domain.relationship.dto.response.PartnerProfileResponse;
 import com.sujeongring.domain.relationship.dto.response.RelationshipProgressResponse;
 import com.sujeongring.domain.relationship.service.RelationshipService;
 import com.sujeongring.global.auth.CurrentUserId;
@@ -27,6 +28,23 @@ public class RelationshipController {
 
         return ApiResponse.success(
                 "관계 진행 정보를 조회하였습니다.",
+                response
+        );
+    }
+
+    @GetMapping("/{relationshipId}/partner-profile")
+    public ApiResponse<PartnerProfileResponse> getPartnerProfile(
+            @PathVariable Long relationshipId,
+            @CurrentUserId Long userId
+    ) {
+        PartnerProfileResponse response =
+                relationshipService.getPartnerProfile(
+                        relationshipId,
+                        userId
+                );
+
+        return ApiResponse.success(
+                "상대방 프로필을 조회하였습니다.",
                 response
         );
     }

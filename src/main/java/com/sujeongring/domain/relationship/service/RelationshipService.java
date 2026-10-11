@@ -6,6 +6,7 @@ import com.sujeongring.domain.quest.enums.QuestCompletionType;
 import com.sujeongring.domain.quest.enums.QuestType;
 import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
 import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
+import com.sujeongring.domain.relationship.dto.response.PartnerProfileResponse;
 import com.sujeongring.domain.relationship.dto.response.QuestResponseType;
 import com.sujeongring.domain.relationship.dto.response.RelationshipProgressResponse;
 import com.sujeongring.domain.relationship.entity.Relationship;
@@ -15,6 +16,10 @@ import com.sujeongring.domain.relationship.exception.RelationshipException;
 import com.sujeongring.domain.relationship.policy.RelationshipUnlockPolicy;
 import com.sujeongring.domain.relationship.repository.RelationshipRepository;
 import com.sujeongring.domain.user.entity.User;
+import com.sujeongring.domain.user.entity.UserHobby;
+import com.sujeongring.domain.user.entity.UserInterest;
+import com.sujeongring.domain.user.repository.UserHobbyRepository;
+import com.sujeongring.domain.user.repository.UserInterestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +37,8 @@ public class RelationshipService {
 
     private final RelationshipRepository relationshipRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
+    private final UserInterestRepository userInterestRepository;
+    private final UserHobbyRepository userHobbyRepository;
     private final RelationshipUnlockPolicy relationshipUnlockPolicy;
 
     public RelationshipProgressResponse getRelationshipProgress(
@@ -114,6 +121,147 @@ public class RelationshipService {
                 TOTAL_STAGES,
 
                 stages
+        );
+    }
+
+    public PartnerProfileResponse getPartnerProfile(
+            Long relationshipId,
+            Long userId
+    ) {
+
+        Relationship relationship =
+                relationshipRepository.findById(relationshipId)
+                        .orElseThrow(() ->
+                                new RelationshipException(
+                                        RelationshipErrorCode.RELATIONSHIP_NOT_FOUND
+                                )
+                        );
+
+        validateParticipant(
+                relationship,
+                userId
+        );
+
+        if (relationship.getStatus() == RelationshipStatus.ENDED) {
+            throw new RelationshipException(
+                    RelationshipErrorCode.RELATIONSHIP_ENDED
+            );
+        }
+
+        User partner =
+                getPartner(
+                        relationship,
+                        userId
+                );
+
+        boolean interestsUnlocked =
+                relationshipUnlockPolicy
+                        .isInterestsUnlocked(relationship);
+
+        boolean hobbiesUnlocked =
+                relationshipUnlockPolicy
+                        .isHobbiesUnlocked(relationship);
+
+        boolean mbtiUnlocked =
+                relationshipUnlockPolicy
+                        .isMbtiUnlocked(relationship);
+
+        boolean basicProfileUnlocked =
+                relationshipUnlockPolicy
+                        .isBasicProfileUnlocked(relationship);
+
+        boolean profileImageUnlocked =
+                relationshipUnlockPolicy
+                        .isProfileImageUnlocked(relationship);
+
+        boolean contactUnlocked =
+                relationshipUnlockPolicy
+                        .isContactUnlocked(relationship);
+
+        List<String> interests =
+                interestsUnlocked
+                        ? userInterestRepository
+                          .findAllByUser_IdOrderByIdAsc(partner.getId())
+                          .stream()
+                          .map(UserInterest::getInterest)
+                          .map(interest -> interest.getLabel())
+                          .toList()
+                        : null;
+
+        List<String> hobbies =
+                hobbiesUnlocked
+                        ? userHobbyRepository
+                          .findAllByUser_IdOrderByIdAsc(partner.getId())
+                          .stream()
+                          .map(UserHobby::getHobby)
+                          .map(hobby -> hobby.getLabel())
+                          .toList()
+                        : null;
+
+        return new PartnerProfileResponse(
+                partner.getId(),
+                partner.getNickname(),
+
+                relationship.getStatus(),
+
+                new PartnerProfileResponse.CurrentStage(
+                        relationship.getCurrentStage(),
+                        getStageName(
+                                relationship.getCurrentStage()
+                        )
+                ),
+
+                new PartnerProfileResponse.ValueField<>(
+                        profileImageUnlocked,
+                        profileImageUnlocked
+                                ? partner.getProfileImageUrl()
+                                : null
+                ),
+
+                new PartnerProfileResponse.ValuesField(
+                        interestsUnlocked,
+                        interests
+                ),
+
+                new PartnerProfileResponse.ValuesField(
+                        hobbiesUnlocked,
+                        hobbies
+                ),
+
+                new PartnerProfileResponse.ValueField<>(
+                        mbtiUnlocked,
+                        mbtiUnlocked && partner.getMbti() != null
+                                ? partner.getMbti().name()
+                                : null
+                ),
+
+                new PartnerProfileResponse.ValueField<>(
+                        basicProfileUnlocked,
+                        basicProfileUnlocked
+                                ? partner.getName()
+                                : null
+                ),
+
+                new PartnerProfileResponse.ValueField<>(
+                        basicProfileUnlocked,
+                        basicProfileUnlocked
+                                ? partner.getStudentNumber()
+                                : null
+                ),
+
+                new PartnerProfileResponse.ValueField<>(
+                        basicProfileUnlocked,
+                        basicProfileUnlocked
+                                ? partner.getDepartmentName()
+                                : null
+                ),
+
+                new PartnerProfileResponse.ValueField<>(
+                        contactUnlocked,
+                        contactUnlocked
+                                ? partner.getContact()
+                                : null
+                )
         );
     }
 

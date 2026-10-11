@@ -19,6 +19,12 @@ public enum RelationshipErrorCode implements ErrorCode {
             HttpStatus.FORBIDDEN,
             "RELATIONSHIP_ACCESS_DENIED",
             "해당 관계에 접근할 권한이 없습니다."
+    ),
+
+    RELATIONSHIP_ENDED(
+            HttpStatus.CONFLICT,
+            "RELATIONSHIP_ENDED",
+            "종료된 관계입니다."
     );
 
     private final HttpStatus status;
