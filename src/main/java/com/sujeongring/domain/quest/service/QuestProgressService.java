@@ -1,3 +1,4 @@
+// 퀘스트 완료 후 채팅 후처리 공통 로직
 package com.sujeongring.domain.quest.service;
 
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
