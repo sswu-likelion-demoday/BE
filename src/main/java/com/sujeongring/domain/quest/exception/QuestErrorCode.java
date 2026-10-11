@@ -16,19 +16,19 @@ public enum QuestErrorCode implements ErrorCode {
     ),
 
     QUEST_POOL_NOT_FOUND(
-            HttpStatus.NOT_FOUND,
+            HttpStatus.INTERNAL_SERVER_ERROR,
             "QUEST_POOL_NOT_FOUND",
             "퀘스트 풀을 찾을 수 없습니다."
     ),
 
     QUEST_CANDIDATE_NOT_ENOUGH(
-            HttpStatus.BAD_REQUEST,
+            HttpStatus.INTERNAL_SERVER_ERROR,
             "QUEST_CANDIDATE_NOT_ENOUGH",
             "퀘스트 후보가 부족합니다."
     ),
 
     QUEST_FIXED_QUEST_NOT_FOUND(
-            HttpStatus.NOT_FOUND,
+            HttpStatus.INTERNAL_SERVER_ERROR,
             "QUEST_FIXED_QUEST_NOT_FOUND",
             "필수 고정 퀘스트를 찾을 수 없습니다."
     ),
@@ -37,6 +37,18 @@ public enum QuestErrorCode implements ErrorCode {
             HttpStatus.NOT_FOUND,
             "QUEST_NOT_FOUND",
             "퀘스트를 찾을 수 없습니다."
+    ),
+
+    QUEST_NOT_ACTIVE(
+            HttpStatus.CONFLICT,
+            "QUEST_NOT_ACTIVE",
+            "현재 진행 중인 퀘스트가 아닙니다."
+    ),
+
+    QUEST_STAGE_MISMATCH(
+            HttpStatus.CONFLICT,
+            "QUEST_STAGE_MISMATCH",
+            "현재 관계 단계의 퀘스트가 아닙니다."
     );
 
     private final HttpStatus status;

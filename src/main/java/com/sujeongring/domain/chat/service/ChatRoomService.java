@@ -16,6 +16,7 @@ import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
 import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
+import com.sujeongring.domain.relationship.policy.RelationshipUnlockPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ public class ChatRoomService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatReadStatusRepository chatReadStatusRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
+    private final RelationshipUnlockPolicy relationshipUnlockPolicy;
 
     public ChatRoomListResponse getChatRooms(Long userId) {
 
@@ -89,7 +91,8 @@ public class ChatRoomService {
         User partner = getPartner(relationship, userId);
 
         boolean profileImageUnlocked =
-                isProfileImageUnlocked(relationship);
+                relationshipUnlockPolicy
+                        .isProfileImageUnlocked(relationship);
 
         ChatRoomDetailResponse.Partner partnerResponse =
                 new ChatRoomDetailResponse.Partner(
@@ -272,7 +275,8 @@ public class ChatRoomService {
         );
 
         boolean profileImageUnlocked =
-                isProfileImageUnlocked(relationship);
+                relationshipUnlockPolicy
+                        .isProfileImageUnlocked(relationship);
 
         ChatRoomListResponse.Stage currentStage =
                 getCurrentStage(relationship);
@@ -341,17 +345,6 @@ public class ChatRoomService {
                 stage,
                 getStageName(stage)
         );
-    }
-
-    private boolean isProfileImageUnlocked(
-            Relationship relationship
-    ) {
-        if (relationship.getStatus() == RelationshipStatus.COMPLETED) {
-            return true;
-        }
-
-        // 3단계 완료 후 프로필 사진 해금
-        return relationship.getCurrentStage() >= 4;
     }
 
     private String getStageName(int stage) {

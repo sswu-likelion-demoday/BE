@@ -23,5 +23,16 @@ public interface RelationshipQuestRepository
             @Param("stage") int stage
     );
 
+    @Query("""
+        SELECT rq
+        FROM RelationshipQuest rq
+        JOIN FETCH rq.quest q
+        WHERE rq.relationship.id = :relationshipId
+        ORDER BY q.stage ASC, q.questOrder ASC
+        """)
+    List<RelationshipQuest> findAllByRelationshipIdWithQuest(
+            @Param("relationshipId") Long relationshipId
+    );
+
     boolean existsByRelationshipId(Long relationshipId);
 }
