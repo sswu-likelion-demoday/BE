@@ -30,6 +30,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
         // server -> client
         registry.enableSimpleBroker("/sub", "/queue");
+
+        // 서버에서 publish한 순서대로 클라이언트에 전달되도록 보장
+        registry.setPreservePublishOrder(true);
     }
 
     @Override

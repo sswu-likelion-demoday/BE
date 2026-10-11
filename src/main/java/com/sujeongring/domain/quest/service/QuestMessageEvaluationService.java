@@ -17,6 +17,7 @@ public class QuestMessageEvaluationService {
 
     private final RelationshipQuestRepository relationshipQuestRepository;
     private final MessageCountQuestService messageCountQuestService;
+    private final AiAnalysisQuestService aiAnalysisQuestService;
 
     @Transactional
     public Optional<QuestCompletionResult> handleTextMessage(
@@ -43,7 +44,12 @@ public class QuestMessageEvaluationService {
                             chatRoom,
                             activeQuest
                     );
-            case AI_ANALYSIS, BOTH_PARTICIPATION -> Optional.empty();
+            case AI_ANALYSIS ->
+                    aiAnalysisQuestService.handleTextMessage(
+                            chatRoom,
+                            activeQuest
+                    );
+            case BOTH_PARTICIPATION -> Optional.empty();
         };
     }
 }
