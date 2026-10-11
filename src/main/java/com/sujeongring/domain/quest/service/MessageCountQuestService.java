@@ -5,8 +5,6 @@ import com.sujeongring.domain.chat.enums.MessageType;
 import com.sujeongring.domain.chat.repository.ChatMessageRepository;
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.enums.QuestCompletionType;
-import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
-import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,29 +18,16 @@ public class MessageCountQuestService {
 
     private static final int MIN_MESSAGE_COUNT_PER_USER = 2;
 
-    private final RelationshipQuestRepository relationshipQuestRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final QuestProgressService questProgressService;
 
     @Transactional
     public Optional<QuestCompletionResult> handleTextMessage(
-            ChatRoom chatRoom
+            ChatRoom chatRoom,
+            RelationshipQuest activeQuest
     ) {
         Relationship relationship =
                 chatRoom.getRelationship();
-
-        RelationshipQuest activeQuest =
-                relationshipQuestRepository
-                        .findByRelationshipIdAndStatusWithQuest(
-                                relationship.getId(),
-                                RelationshipQuestStatus.ACTIVE
-                        )
-                        .orElse(null);
-
-        // 현재 진행 중인 퀘스트가 없음
-        if (activeQuest == null) {
-            return Optional.empty();
-        }
 
         // MESSAGE_COUNT 퀘스트가 아님
         if (activeQuest.getQuest().getCompletionType()

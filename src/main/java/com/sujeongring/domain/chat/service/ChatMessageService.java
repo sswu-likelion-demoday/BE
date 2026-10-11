@@ -8,7 +8,7 @@ import com.sujeongring.domain.chat.exception.ChatErrorCode;
 import com.sujeongring.domain.chat.exception.ChatException;
 import com.sujeongring.domain.chat.repository.ChatMessageRepository;
 import com.sujeongring.domain.chat.repository.ChatRoomRepository;
-import com.sujeongring.domain.quest.service.MessageCountQuestService;
+import com.sujeongring.domain.quest.service.QuestMessageEvaluationService;
 import com.sujeongring.domain.quest.service.QuestCompletionResult;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
@@ -34,7 +34,7 @@ public class ChatMessageService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
-    private final MessageCountQuestService messageCountQuestService;
+    private final QuestMessageEvaluationService questMessageEvaluationService;
     private final ChatQuestCompletionService chatQuestCompletionService;
 
     public ChatMessageListResponse getMessages(
@@ -154,7 +154,7 @@ public class ChatMessageService {
                 new ArrayList<>();
 
         Optional<QuestCompletionResult> questResult =
-                messageCountQuestService.handleTextMessage(
+                questMessageEvaluationService.handleTextMessage(
                         chatRoom
                 );
 
