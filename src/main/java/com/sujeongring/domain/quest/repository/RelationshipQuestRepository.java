@@ -22,4 +22,6 @@ public interface RelationshipQuestRepository
             @Param("relationshipId") Long relationshipId,
             @Param("stage") int stage
     );
+
+    boolean existsByRelationshipId(Long relationshipId);
 }
