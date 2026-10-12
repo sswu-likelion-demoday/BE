@@ -81,6 +81,11 @@ public class User {
         this.onboardingCompleted = false;
     }
 
+    public void completeOnboarding(MbtiType mbti) {
+        this.mbti = mbti;
+        this.onboardingCompleted = true;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();

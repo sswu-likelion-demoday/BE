@@ -12,9 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /**
-     * 비즈니스 예외
-     */
+    //비즈니스 예외
     @ExceptionHandler(BaseException.class)
     public ResponseEntity<ApiResponse<Void>> handleBaseException(BaseException e) {
         ErrorCode errorCode = e.getErrorCode();
@@ -24,9 +22,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorCode, e.getMessage()));
     }
 
-    /**
-     * @Valid 검증 실패
-     */
+    // @Valid 검증 실패
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(
             MethodArgumentNotValidException e
@@ -45,9 +41,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorCode, message));
     }
 
-    /**
-     * 처리되지 않은 서버 예외
-     */
+    //처리되지 않은 서버 예외
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
 
