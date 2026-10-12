@@ -8,12 +8,8 @@ import com.sujeongring.domain.chat.exception.ChatErrorCode;
 import com.sujeongring.domain.chat.exception.ChatException;
 import com.sujeongring.domain.chat.repository.ChatMessageRepository;
 import com.sujeongring.domain.chat.repository.ChatRoomRepository;
-import com.sujeongring.domain.quest.service.QuestMessageEvaluationService;
-import com.sujeongring.domain.quest.service.QuestCompletionResult;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
-import com.sujeongring.domain.user.entity.User;
-import com.sujeongring.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -22,21 +18,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ChatMessageService {
 
     private static final int MAX_PAGE_SIZE = 100;
 
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
-    private final UserRepository userRepository;
-    private final QuestMessageEvaluationService questMessageEvaluationService;
-    private final ChatQuestCompletionService chatQuestCompletionService;
 
+    @Transactional(readOnly = true)
     public ChatMessageListResponse getMessages(
             Long chatRoomId,
             Long userId,
@@ -104,86 +96,6 @@ public class ChatMessageService {
         );
     }
 
-    @Transactional
-    public ChatSendResult sendTextMessage(
-            Long chatRoomId,
-            Long userId,
-            String content
-    ) {
-        ChatRoom chatRoom = chatRoomRepository
-                .findDetailById(chatRoomId)
-                .orElseThrow(() -> new ChatException(
-                        ChatErrorCode.CHAT_ROOM_NOT_FOUND
-                ));
-
-        Relationship relationship = chatRoom.getRelationship();
-
-        validateParticipant(relationship, userId);
-        validateWritable(relationship);
-
-        User sender = userRepository.findById(userId)
-                .orElseThrow(() -> new ChatException(
-                        ChatErrorCode.CHAT_ROOM_ACCESS_DENIED
-                ));
-
-        ChatMessage message = new ChatMessage(
-                chatRoom,
-                sender,
-                MessageType.TEXT,
-                content,
-                null
-        );
-
-        ChatMessage savedMessage =
-                chatMessageRepository.save(message);
-
-        ChatMessageResponse textResponse =
-                new ChatMessageResponse(
-                        savedMessage.getId(),
-                        chatRoom.getId(),
-                        sender.getId(),
-                        savedMessage.getMessageType(),
-                        savedMessage.getContent(),
-                        savedMessage.getCreatedAt()
-                );
-
-        List<ChatMessageResponse> systemMessages =
-                new ArrayList<>();
-
-        List<ChatEventResponse> events =
-                new ArrayList<>();
-
-        Optional<QuestCompletionResult> questResult =
-                questMessageEvaluationService.handleTextMessage(
-                        chatRoom
-                );
-
-        if (questResult.isPresent()) {
-
-            QuestCompletionResult result =
-                    questResult.get();
-
-            ChatQuestCompletionResult completionPayload =
-                    chatQuestCompletionService.complete(
-                            chatRoom,
-                            result
-                    );
-
-            systemMessages.addAll(
-                    completionPayload.systemMessages()
-            );
-            events.addAll(
-                    completionPayload.events()
-            );
-        }
-
-        return new ChatSendResult(
-                textResponse,
-                systemMessages,
-                events
-        );
-    }
-
     private ChatMessageListResponse.Message toResponse(
             ChatMessage message
     ) {
@@ -229,27 +141,4 @@ public class ChatMessageService {
         }
     }
 
-    private void validateParticipant(
-            Relationship relationship,
-            Long userId
-    ) {
-        boolean participant =
-                relationship.getUserA().getId().equals(userId)
-                        || relationship.getUserB().getId().equals(userId);
-
-        if (!participant) {
-            throw new ChatException(
-                    ChatErrorCode.CHAT_ROOM_ACCESS_DENIED
-            );
-        }
-    }
-
-    private void validateWritable(Relationship relationship) {
-
-        if (relationship.getStatus() != RelationshipStatus.ACTIVE) {
-            throw new ChatException(
-                    ChatErrorCode.CHAT_ROOM_NOT_WRITABLE
-            );
-        }
-    }
 }

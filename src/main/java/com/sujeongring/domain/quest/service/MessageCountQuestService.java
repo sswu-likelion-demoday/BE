@@ -8,7 +8,6 @@ import com.sujeongring.domain.quest.enums.QuestCompletionType;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -21,7 +20,6 @@ public class MessageCountQuestService {
     private final ChatMessageRepository chatMessageRepository;
     private final QuestProgressService questProgressService;
 
-    @Transactional
     public Optional<QuestCompletionResult> handleTextMessage(
             ChatRoom chatRoom,
             RelationshipQuest activeQuest

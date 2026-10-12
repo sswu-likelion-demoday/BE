@@ -29,6 +29,7 @@ dependencies {
     implementation 'org.springframework.security:spring-security-crypto'
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'com.openai:openai-java:4.76.0'
 
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'

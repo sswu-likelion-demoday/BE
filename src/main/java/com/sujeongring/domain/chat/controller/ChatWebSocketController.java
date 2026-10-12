@@ -3,8 +3,9 @@ package com.sujeongring.domain.chat.controller;
 import com.sujeongring.domain.chat.dto.request.ChatMessageSendRequest;
 import com.sujeongring.domain.chat.dto.response.ChatEventResponse;
 import com.sujeongring.domain.chat.dto.response.ChatMessageResponse;
-import com.sujeongring.domain.chat.dto.response.ChatSendResult;
-import com.sujeongring.domain.chat.service.ChatMessageService;
+import com.sujeongring.domain.chat.service.ChatMessageWriteService;
+import com.sujeongring.domain.chat.service.ChatQuestProcessingService;
+import com.sujeongring.domain.chat.service.ChatQuestCompletionResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -18,7 +19,8 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 public class ChatWebSocketController {
 
-    private final ChatMessageService chatMessageService;
+    private final ChatMessageWriteService chatMessageWriteService;
+    private final ChatQuestProcessingService chatQuestProcessingService;
     private final SimpMessagingTemplate messagingTemplate;
 
     @MessageMapping("/chat/{chatRoomId}/messages")
@@ -29,8 +31,8 @@ public class ChatWebSocketController {
     ) {
         Long userId = (Long) authentication.getPrincipal();
 
-        ChatSendResult result =
-                chatMessageService.sendTextMessage(
+        ChatMessageResponse textMessage =
+                chatMessageWriteService.saveTextMessage(
                         chatRoomId,
                         userId,
                         request.content()
@@ -39,12 +41,21 @@ public class ChatWebSocketController {
         // 1. 사용자가 보낸 TEXT
         messagingTemplate.convertAndSend(
                 "/sub/chat/" + chatRoomId,
-                result.message()
+                textMessage
         );
+
+        ChatQuestCompletionResult questResult =
+                chatQuestProcessingService.processTextMessage(
+                        chatRoomId
+                ).orElse(null);
+
+        if (questResult == null) {
+            return;
+        }
 
         // 2. 퀘스트 완료 SYSTEM 메시지
         for (ChatMessageResponse systemMessage
-                : result.systemMessages()) {
+                : questResult.systemMessages()) {
 
             messagingTemplate.convertAndSend(
                     "/sub/chat/" + chatRoomId,
@@ -54,7 +65,7 @@ public class ChatWebSocketController {
 
         // 3. 프론트 UI 이벤트
         for (ChatEventResponse event
-                : result.events()) {
+                : questResult.events()) {
 
             messagingTemplate.convertAndSend(
                     "/sub/chat/" + chatRoomId + "/events",

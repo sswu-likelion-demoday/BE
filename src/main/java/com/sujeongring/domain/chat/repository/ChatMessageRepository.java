@@ -69,4 +69,19 @@ public interface ChatMessageRepository
             @Param("messageType") MessageType messageType,
             @Param("openedAt") LocalDateTime openedAt
     );
+
+    @Query("""
+        SELECT m
+        FROM ChatMessage m
+        JOIN FETCH m.sender s
+        WHERE m.chatRoom.id = :chatRoomId
+          AND m.messageType = :messageType
+          AND m.createdAt >= :openedAt
+        ORDER BY m.id ASC
+        """)
+    List<ChatMessage> findMessagesAfterQuestOpened(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("messageType") MessageType messageType,
+            @Param("openedAt") LocalDateTime openedAt
+    );
 }
