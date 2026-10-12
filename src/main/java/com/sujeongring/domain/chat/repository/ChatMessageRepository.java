@@ -59,6 +59,21 @@ public interface ChatMessageRepository
         SELECT COUNT(m)
         FROM ChatMessage m
         WHERE m.chatRoom.id = :chatRoomId
+          AND m.messageType = :messageType
+          AND m.createdAt >= :openedAt
+          AND m.id <= :triggerMessageId
+        """)
+    long countMessagesAfterQuestOpenedUntilMessage(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("messageType") MessageType messageType,
+            @Param("openedAt") LocalDateTime openedAt,
+            @Param("triggerMessageId") Long triggerMessageId
+    );
+
+    @Query("""
+        SELECT COUNT(m)
+        FROM ChatMessage m
+        WHERE m.chatRoom.id = :chatRoomId
           AND m.sender.id = :userId
           AND m.messageType = :messageType
           AND m.createdAt >= :openedAt
@@ -68,6 +83,23 @@ public interface ChatMessageRepository
             @Param("userId") Long userId,
             @Param("messageType") MessageType messageType,
             @Param("openedAt") LocalDateTime openedAt
+    );
+
+    @Query("""
+        SELECT COUNT(m)
+        FROM ChatMessage m
+        WHERE m.chatRoom.id = :chatRoomId
+          AND m.sender.id = :userId
+          AND m.messageType = :messageType
+          AND m.createdAt >= :openedAt
+          AND m.id <= :triggerMessageId
+        """)
+    long countUserMessagesAfterQuestOpenedUntilMessage(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("userId") Long userId,
+            @Param("messageType") MessageType messageType,
+            @Param("openedAt") LocalDateTime openedAt,
+            @Param("triggerMessageId") Long triggerMessageId
     );
 
     @Query("""
@@ -83,5 +115,22 @@ public interface ChatMessageRepository
             @Param("chatRoomId") Long chatRoomId,
             @Param("messageType") MessageType messageType,
             @Param("openedAt") LocalDateTime openedAt
+    );
+
+    @Query("""
+        SELECT m
+        FROM ChatMessage m
+        JOIN FETCH m.sender s
+        WHERE m.chatRoom.id = :chatRoomId
+          AND m.messageType = :messageType
+          AND m.createdAt >= :openedAt
+          AND m.id <= :triggerMessageId
+        ORDER BY m.id ASC
+        """)
+    List<ChatMessage> findMessagesAfterQuestOpenedUntilMessage(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("messageType") MessageType messageType,
+            @Param("openedAt") LocalDateTime openedAt,
+            @Param("triggerMessageId") Long triggerMessageId
     );
 }

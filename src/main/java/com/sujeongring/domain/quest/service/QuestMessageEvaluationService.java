@@ -25,7 +25,8 @@ public class QuestMessageEvaluationService {
     private final AiAnalysisQuestService aiAnalysisQuestService;
 
     public Optional<QuestCompletionResult> handleTextMessage(
-            Long chatRoomId
+            Long chatRoomId,
+            Long triggerMessageId
     ) {
         ChatRoom chatRoom =
                 chatRoomRepository
@@ -66,12 +67,14 @@ public class QuestMessageEvaluationService {
             case MESSAGE_COUNT ->
                     messageCountQuestService.handleTextMessage(
                             chatRoom,
-                            activeQuest
+                            activeQuest,
+                            triggerMessageId
                     );
             case AI_ANALYSIS ->
                     aiAnalysisQuestService.handleTextMessage(
                             chatRoom,
-                            activeQuest
+                            activeQuest,
+                            triggerMessageId
                     );
             case BOTH_PARTICIPATION -> Optional.empty();
         };

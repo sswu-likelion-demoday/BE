@@ -8,6 +8,7 @@ import com.sujeongring.domain.quest.enums.QuestCompletionType;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -20,9 +21,11 @@ public class MessageCountQuestService {
     private final ChatMessageRepository chatMessageRepository;
     private final QuestProgressService questProgressService;
 
+    @Transactional
     public Optional<QuestCompletionResult> handleTextMessage(
             ChatRoom chatRoom,
-            RelationshipQuest activeQuest
+            RelationshipQuest activeQuest,
+            Long triggerMessageId
     ) {
         Relationship relationship =
                 chatRoom.getRelationship();
@@ -44,26 +47,32 @@ public class MessageCountQuestService {
 
         // 현재 퀘스트가 열린 이후 TEXT 메시지만 계산
         long totalMessageCount =
-                chatMessageRepository.countMessagesAfterQuestOpened(
+                chatMessageRepository
+                        .countMessagesAfterQuestOpenedUntilMessage(
                         chatRoom.getId(),
                         MessageType.TEXT,
-                        activeQuest.getOpenedAt()
+                        activeQuest.getOpenedAt(),
+                        triggerMessageId
                 );
 
         long userAMessageCount =
-                chatMessageRepository.countUserMessagesAfterQuestOpened(
+                chatMessageRepository
+                        .countUserMessagesAfterQuestOpenedUntilMessage(
                         chatRoom.getId(),
                         relationship.getUserA().getId(),
                         MessageType.TEXT,
-                        activeQuest.getOpenedAt()
+                        activeQuest.getOpenedAt(),
+                        triggerMessageId
                 );
 
         long userBMessageCount =
-                chatMessageRepository.countUserMessagesAfterQuestOpened(
+                chatMessageRepository
+                        .countUserMessagesAfterQuestOpenedUntilMessage(
                         chatRoom.getId(),
                         relationship.getUserB().getId(),
                         MessageType.TEXT,
-                        activeQuest.getOpenedAt()
+                        activeQuest.getOpenedAt(),
+                        triggerMessageId
                 );
 
         // 화면에 보여줄 progress는 목표치까지만 증가
@@ -73,7 +82,10 @@ public class MessageCountQuestService {
                         targetProgress
                 );
 
-        activeQuest.updateProgress(progress);
+        questProgressService.updateQuestProgress(
+                activeQuest.getId(),
+                progress
+        );
 
         boolean targetReached =
                 totalMessageCount >= targetProgress;

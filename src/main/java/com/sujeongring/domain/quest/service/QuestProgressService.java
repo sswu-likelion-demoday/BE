@@ -21,6 +21,25 @@ public class QuestProgressService {
     private final RelationshipQuestRepository relationshipQuestRepository;
 
     @Transactional
+    public void updateQuestProgress(
+            Long relationshipQuestId,
+            int progress
+    ) {
+        RelationshipQuest relationshipQuest =
+                relationshipQuestRepository
+                        .findByIdForUpdateWithDetails(
+                                relationshipQuestId
+                        )
+                        .orElseThrow(() ->
+                                new QuestException(
+                                        QuestErrorCode.QUEST_NOT_FOUND
+                                )
+                        );
+
+        relationshipQuest.updateProgress(progress);
+    }
+
+    @Transactional
     public QuestCompletionResult completeQuest(
             Long relationshipQuestId
     ) {

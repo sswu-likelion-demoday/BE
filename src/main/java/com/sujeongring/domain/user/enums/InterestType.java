@@ -15,7 +15,7 @@ public enum InterestType {
     FASHION_BEAUTY("패션·뷰티"),
     BOOK_WRITING("책·글쓰기"),
     IT_TECH("IT·테크"),
-    FINANCE("경제·재태크"),
+    FINANCE("경제·재테크"),
     ANIMAL("동물"),
     GAME("게임"),
     SPORTS("스포츠"),

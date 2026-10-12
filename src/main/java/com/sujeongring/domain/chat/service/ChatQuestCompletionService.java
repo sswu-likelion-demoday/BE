@@ -5,7 +5,10 @@ import com.sujeongring.domain.chat.dto.response.ChatMessageResponse;
 import com.sujeongring.domain.chat.entity.ChatMessage;
 import com.sujeongring.domain.chat.entity.ChatRoom;
 import com.sujeongring.domain.chat.enums.MessageType;
+import com.sujeongring.domain.chat.exception.ChatErrorCode;
+import com.sujeongring.domain.chat.exception.ChatException;
 import com.sujeongring.domain.chat.repository.ChatMessageRepository;
+import com.sujeongring.domain.chat.repository.ChatRoomRepository;
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.exception.QuestErrorCode;
 import com.sujeongring.domain.quest.exception.QuestException;
@@ -13,6 +16,8 @@ import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import com.sujeongring.domain.quest.service.QuestCompletionResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,13 +26,24 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ChatQuestCompletionService {
 
+    private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ChatQuestCompletionResult complete(
-            ChatRoom chatRoom,
+            Long chatRoomId,
             QuestCompletionResult result
     ) {
+        ChatRoom chatRoom =
+                chatRoomRepository
+                        .findDetailById(chatRoomId)
+                        .orElseThrow(() ->
+                                new ChatException(
+                                        ChatErrorCode.CHAT_ROOM_NOT_FOUND
+                                )
+                        );
+
         List<ChatMessageResponse> systemMessages =
                 new ArrayList<>();
         List<ChatEventResponse> events =

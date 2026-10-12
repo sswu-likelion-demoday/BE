@@ -1,11 +1,9 @@
 package com.sujeongring.domain.chat.controller;
 
 import com.sujeongring.domain.chat.dto.request.ChatMessageSendRequest;
-import com.sujeongring.domain.chat.dto.response.ChatEventResponse;
 import com.sujeongring.domain.chat.dto.response.ChatMessageResponse;
 import com.sujeongring.domain.chat.service.ChatMessageWriteService;
 import com.sujeongring.domain.chat.service.ChatQuestProcessingService;
-import com.sujeongring.domain.chat.service.ChatQuestCompletionResult;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -44,33 +42,9 @@ public class ChatWebSocketController {
                 textMessage
         );
 
-        ChatQuestCompletionResult questResult =
-                chatQuestProcessingService.processTextMessage(
-                        chatRoomId
-                ).orElse(null);
-
-        if (questResult == null) {
-            return;
-        }
-
-        // 2. 퀘스트 완료 SYSTEM 메시지
-        for (ChatMessageResponse systemMessage
-                : questResult.systemMessages()) {
-
-            messagingTemplate.convertAndSend(
-                    "/sub/chat/" + chatRoomId,
-                    systemMessage
-            );
-        }
-
-        // 3. 프론트 UI 이벤트
-        for (ChatEventResponse event
-                : questResult.events()) {
-
-            messagingTemplate.convertAndSend(
-                    "/sub/chat/" + chatRoomId + "/events",
-                    event
-            );
-        }
+        chatQuestProcessingService.processTextMessageAsync(
+                chatRoomId,
+                textMessage.messageId()
+        );
     }
 }

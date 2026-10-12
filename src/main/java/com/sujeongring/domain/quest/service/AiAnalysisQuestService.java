@@ -29,7 +29,8 @@ public class AiAnalysisQuestService {
 
     public Optional<QuestCompletionResult> handleTextMessage(
             ChatRoom chatRoom,
-            RelationshipQuest activeQuest
+            RelationshipQuest activeQuest,
+            Long triggerMessageId
     ) {
         if (activeQuest.getQuest().getCompletionType()
                 != QuestCompletionType.AI_ANALYSIS) {
@@ -44,38 +45,48 @@ public class AiAnalysisQuestService {
                 chatRoom.getRelationship();
 
         long totalMessageCount =
-                chatMessageRepository.countMessagesAfterQuestOpened(
+                chatMessageRepository
+                        .countMessagesAfterQuestOpenedUntilMessage(
                         chatRoom.getId(),
                         MessageType.TEXT,
-                        activeQuest.getOpenedAt()
+                        activeQuest.getOpenedAt(),
+                        triggerMessageId
                 );
 
         long userAMessageCount =
-                chatMessageRepository.countUserMessagesAfterQuestOpened(
+                chatMessageRepository
+                        .countUserMessagesAfterQuestOpenedUntilMessage(
                         chatRoom.getId(),
                         relationship.getUserA().getId(),
                         MessageType.TEXT,
-                        activeQuest.getOpenedAt()
+                        activeQuest.getOpenedAt(),
+                        triggerMessageId
                 );
 
         long userBMessageCount =
-                chatMessageRepository.countUserMessagesAfterQuestOpened(
+                chatMessageRepository
+                        .countUserMessagesAfterQuestOpenedUntilMessage(
                         chatRoom.getId(),
                         relationship.getUserB().getId(),
                         MessageType.TEXT,
-                        activeQuest.getOpenedAt()
+                        activeQuest.getOpenedAt(),
+                        triggerMessageId
                 );
 
         log.info(
-                "[AI QUEST] questId={}, title={}, total={}, userA={}, userB={}",
+                "[AI QUEST] questId={}, title={}, triggerMessageId={}, total={}, userA={}, userB={}",
                 activeQuest.getId(),
                 activeQuest.getQuest().getTitle(),
+                triggerMessageId,
                 totalMessageCount,
                 userAMessageCount,
                 userBMessageCount
         );
 
-        activeQuest.updateProgress((int) totalMessageCount);
+        questProgressService.updateQuestProgress(
+                activeQuest.getId(),
+                (int) totalMessageCount
+        );
 
         boolean enoughMessages =
                 totalMessageCount >= MIN_TOTAL_MESSAGES;
@@ -102,10 +113,11 @@ public class AiAnalysisQuestService {
 
         List<ChatMessage> messages =
                 chatMessageRepository
-                        .findMessagesAfterQuestOpened(
+                        .findMessagesAfterQuestOpenedUntilMessage(
                                 chatRoom.getId(),
                                 MessageType.TEXT,
-                                activeQuest.getOpenedAt()
+                                activeQuest.getOpenedAt(),
+                                triggerMessageId
                         );
 
         log.info(

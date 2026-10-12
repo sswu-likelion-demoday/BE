@@ -1,43 +1,78 @@
 package com.sujeongring.domain.chat.service;
 
-import com.sujeongring.domain.chat.entity.ChatRoom;
-import com.sujeongring.domain.chat.exception.ChatErrorCode;
-import com.sujeongring.domain.chat.exception.ChatException;
-import com.sujeongring.domain.chat.repository.ChatRoomRepository;
+import com.sujeongring.domain.chat.dto.response.ChatEventResponse;
+import com.sujeongring.domain.chat.dto.response.ChatMessageResponse;
 import com.sujeongring.domain.quest.service.QuestCompletionResult;
 import com.sujeongring.domain.quest.service.QuestMessageEvaluationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatQuestProcessingService {
 
-    private final ChatRoomRepository chatRoomRepository;
     private final QuestMessageEvaluationService questMessageEvaluationService;
     private final ChatQuestCompletionService chatQuestCompletionService;
+    private final SimpMessagingTemplate messagingTemplate;
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public Optional<ChatQuestCompletionResult> processTextMessage(
-            Long chatRoomId
+    @Async
+    public void processTextMessageAsync(
+            Long chatRoomId,
+            Long triggerMessageId
     ) {
-        ChatRoom chatRoom =
-                chatRoomRepository
-                        .findDetailById(chatRoomId)
-                        .orElseThrow(() ->
-                                new ChatException(
-                                        ChatErrorCode.CHAT_ROOM_NOT_FOUND
-                                )
-                        );
+        try {
+            Optional<ChatQuestCompletionResult> questResult =
+                    processTextMessage(
+                            chatRoomId,
+                            triggerMessageId
+                    );
 
-        Optional<QuestCompletionResult> questResult =
-                questMessageEvaluationService.handleTextMessage(
-                        chatRoomId
+            if (questResult.isEmpty()) {
+                return;
+            }
+
+            ChatQuestCompletionResult completionResult =
+                    questResult.get();
+
+            for (ChatMessageResponse systemMessage
+                    : completionResult.systemMessages()) {
+                messagingTemplate.convertAndSend(
+                        "/sub/chat/" + chatRoomId,
+                        systemMessage
                 );
+            }
+
+            for (ChatEventResponse event
+                    : completionResult.events()) {
+                messagingTemplate.convertAndSend(
+                        "/sub/chat/" + chatRoomId + "/events",
+                        event
+                );
+            }
+        } catch (Exception exception) {
+            log.warn(
+                    "[QUEST] async quest processing failed - chatRoomId={}",
+                    chatRoomId,
+                    exception
+            );
+        }
+    }
+
+    public Optional<ChatQuestCompletionResult> processTextMessage(
+            Long chatRoomId,
+            Long triggerMessageId
+    ) {
+        Optional<QuestCompletionResult> questResult =
+                    questMessageEvaluationService.handleTextMessage(
+                            chatRoomId,
+                            triggerMessageId
+                    );
 
         if (questResult.isEmpty()) {
             return Optional.empty();
@@ -45,7 +80,7 @@ public class ChatQuestProcessingService {
 
         return Optional.of(
                 chatQuestCompletionService.complete(
-                        chatRoom,
+                        chatRoomId,
                         questResult.get()
                 )
         );
