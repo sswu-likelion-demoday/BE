@@ -47,17 +47,10 @@ public class RelationshipService {
     ) {
 
         Relationship relationship =
-                relationshipRepository.findById(relationshipId)
-                        .orElseThrow(() ->
-                                new RelationshipException(
-                                        RelationshipErrorCode.RELATIONSHIP_NOT_FOUND
-                                )
-                        );
-
-        validateParticipant(
-                relationship,
-                userId
-        );
+                getAccessibleRelationship(
+                        relationshipId,
+                        userId
+                );
 
         User partner = getPartner(
                 relationship,
@@ -130,23 +123,10 @@ public class RelationshipService {
     ) {
 
         Relationship relationship =
-                relationshipRepository.findById(relationshipId)
-                        .orElseThrow(() ->
-                                new RelationshipException(
-                                        RelationshipErrorCode.RELATIONSHIP_NOT_FOUND
-                                )
-                        );
-
-        validateParticipant(
-                relationship,
-                userId
-        );
-
-        if (relationship.getStatus() == RelationshipStatus.ENDED) {
-            throw new RelationshipException(
-                    RelationshipErrorCode.RELATIONSHIP_ENDED
-            );
-        }
+                getAccessibleRelationship(
+                        relationshipId,
+                        userId
+                );
 
         User partner =
                 getPartner(
@@ -429,6 +409,32 @@ public class RelationshipService {
         }
 
         return RelationshipProgressResponse.StageStatus.LOCKED;
+    }
+
+    private Relationship getAccessibleRelationship(
+            Long relationshipId,
+            Long userId
+    ) {
+        Relationship relationship =
+                relationshipRepository.findById(relationshipId)
+                        .orElseThrow(() ->
+                                new RelationshipException(
+                                        RelationshipErrorCode.RELATIONSHIP_NOT_FOUND
+                                )
+                        );
+
+        validateParticipant(
+                relationship,
+                userId
+        );
+
+        if (relationship.getStatus() == RelationshipStatus.ENDED) {
+            throw new RelationshipException(
+                    RelationshipErrorCode.RELATIONSHIP_ENDED
+            );
+        }
+
+        return relationship;
     }
 
     private void validateParticipant(

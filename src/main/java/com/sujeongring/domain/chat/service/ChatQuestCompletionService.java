@@ -131,11 +131,18 @@ public class ChatQuestCompletionService {
                                     )
                             );
 
+            int questSequence =
+                    getQuestSequence(
+                            result.relationshipId(),
+                            openedQuest.getQuest().getStage()
+                    );
+
             events.add(
                     ChatEventResponse.questOpened(
                             result.relationshipId(),
                             openedQuest.getId(),
                             openedQuest.getQuest().getStage(),
+                            questSequence,
                             openedQuest.getQuest().getQuestType(),
                             openedQuest.getQuest().getTitle(),
                             openedQuest.getQuest().getDescription()
@@ -158,5 +165,23 @@ public class ChatQuestCompletionService {
                     QuestErrorCode.QUEST_STAGE_MISMATCH
             );
         };
+    }
+
+    private int getQuestSequence(Long relationshipId, int stage) {
+        List<RelationshipQuest> stageQuests =
+                relationshipQuestRepository
+                        .findByRelationshipIdAndStage(
+                                relationshipId,
+                                stage
+                        );
+
+        for (int index = 0; index < stageQuests.size(); index++) {
+            RelationshipQuest quest = stageQuests.get(index);
+            if (quest.getStatus() == com.sujeongring.domain.quest.enums.RelationshipQuestStatus.ACTIVE) {
+                return index + 1;
+            }
+        }
+
+        return stageQuests.isEmpty() ? 1 : stageQuests.size();
     }
 }

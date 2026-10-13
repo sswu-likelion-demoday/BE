@@ -15,6 +15,8 @@ public record ChatEventResponse(
 
         Integer completedStage,
 
+        Integer questSequence,
+
         QuestType questType,
 
         String title,
@@ -28,6 +30,7 @@ public record ChatEventResponse(
             Long relationshipId,
             Long relationshipQuestId,
             Integer stage,
+            Integer questSequence,
             QuestType questType,
             String title,
             String description
@@ -38,6 +41,7 @@ public record ChatEventResponse(
                 relationshipQuestId,
                 stage,
                 null,
+                questSequence,
                 questType,
                 title,
                 description,
@@ -59,6 +63,7 @@ public record ChatEventResponse(
                 null,
                 null,
                 null,
+                null,
                 unlockLabel
         );
     }
@@ -72,6 +77,7 @@ public record ChatEventResponse(
                 null,
                 null,
                 4,
+                null,
                 null,
                 null,
                 null,
