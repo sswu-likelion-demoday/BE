@@ -1,11 +1,15 @@
 package com.sujeongring.domain.quest.repository;
 
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
+import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface RelationshipQuestRepository
         extends JpaRepository<RelationshipQuest, Long> {
@@ -22,4 +26,41 @@ public interface RelationshipQuestRepository
             @Param("relationshipId") Long relationshipId,
             @Param("stage") int stage
     );
+
+    @Query("""
+        SELECT rq
+        FROM RelationshipQuest rq
+        JOIN FETCH rq.quest q
+        WHERE rq.relationship.id = :relationshipId
+        ORDER BY q.stage ASC, q.questOrder ASC
+        """)
+    List<RelationshipQuest> findAllByRelationshipIdWithQuest(
+            @Param("relationshipId") Long relationshipId
+    );
+
+    @Query("""
+        SELECT rq
+        FROM RelationshipQuest rq
+        JOIN FETCH rq.quest q
+        WHERE rq.relationship.id = :relationshipId
+          AND rq.status = :status
+        """)
+    Optional<RelationshipQuest> findByRelationshipIdAndStatusWithQuest(
+            @Param("relationshipId") Long relationshipId,
+            @Param("status") RelationshipQuestStatus status
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT rq
+        FROM RelationshipQuest rq
+        JOIN FETCH rq.relationship
+        JOIN FETCH rq.quest
+        WHERE rq.id = :relationshipQuestId
+        """)
+    Optional<RelationshipQuest> findByIdForUpdateWithDetails(
+            @Param("relationshipQuestId") Long relationshipQuestId
+    );
+
+    boolean existsByRelationshipId(Long relationshipId);
 }

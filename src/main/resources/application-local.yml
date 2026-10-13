@@ -43,6 +43,10 @@ spring:
 
     open-in-view: false
 
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+
 logging:
   level:
     root: info

@@ -52,6 +52,15 @@ public class RelationshipQuest {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "user_a_participated", nullable = false)
+    private boolean userAParticipated = false;
+
+    @Column(name = "user_b_participated", nullable = false)
+    private boolean userBParticipated = false;
+
+    @Column(name = "reciprocal_conversation", nullable = false)
+    private boolean reciprocalConversation = false;
+
     public RelationshipQuest(
             Relationship relationship,
             Quest quest,
@@ -75,6 +84,19 @@ public class RelationshipQuest {
 
     public void updateProgress(int progress) {
         this.progress = progress;
+    }
+
+    public void updateAiEvaluation(
+            boolean userAParticipated,
+            boolean userBParticipated,
+            boolean reciprocalConversation
+    ) {
+        this.userAParticipated =
+                this.userAParticipated || userAParticipated;
+        this.userBParticipated =
+                this.userBParticipated || userBParticipated;
+        this.reciprocalConversation =
+                this.reciprocalConversation || reciprocalConversation;
     }
 
     public void complete() {

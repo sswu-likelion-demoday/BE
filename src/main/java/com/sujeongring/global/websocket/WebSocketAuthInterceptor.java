@@ -105,8 +105,11 @@ public class WebSocketAuthInterceptor implements ChannelInterceptor {
 
         Long userId = (Long) authentication.getPrincipal();
 
-        String chatRoomIdValue =
+        String remaining =
                 destination.substring("/sub/chat/".length());
+
+        String chatRoomIdValue =
+                remaining.split("/")[0];
 
         Long chatRoomId;
 

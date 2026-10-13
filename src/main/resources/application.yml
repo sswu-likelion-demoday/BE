@@ -30,6 +30,10 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: ${OPENAI_MODEL:gpt-4o-mini}
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
