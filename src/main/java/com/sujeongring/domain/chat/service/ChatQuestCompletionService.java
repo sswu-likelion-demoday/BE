@@ -153,7 +153,9 @@ public class ChatQuestCompletionService {
             case 2 -> "관심사";
             case 3 -> "취미 · MBTI";
             case 4 -> "이름 · 학번 · 학과 · 프로필 사진";
-            default -> "";
+            default -> throw new QuestException(
+                    QuestErrorCode.QUEST_STAGE_MISMATCH
+            );
         };
     }
 }

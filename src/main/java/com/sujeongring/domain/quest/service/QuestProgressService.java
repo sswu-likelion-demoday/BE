@@ -46,7 +46,9 @@ public class QuestProgressService {
 
         RelationshipQuest relationshipQuest =
                 relationshipQuestRepository
-                        .findById(relationshipQuestId)
+                        .findByIdForUpdateWithDetails(
+                                relationshipQuestId
+                        )
                         .orElseThrow(() ->
                                 new QuestException(
                                         QuestErrorCode.QUEST_NOT_FOUND

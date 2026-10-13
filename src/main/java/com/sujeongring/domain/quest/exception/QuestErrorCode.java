@@ -49,6 +49,12 @@ public enum QuestErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "QUEST_STAGE_MISMATCH",
             "현재 관계 단계의 퀘스트가 아닙니다."
+    ),
+
+    AI_EVALUATION_FAILED(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "AI_EVALUATION_FAILED",
+            "AI 퀘스트 판정을 수행하지 못했습니다."
     );
 
     private final HttpStatus status;

@@ -73,15 +73,17 @@ public class AiAnalysisQuestService {
                         triggerMessageId
                 );
 
-        log.info(
-                "[AI QUEST] questId={}, title={}, triggerMessageId={}, total={}, userA={}, userB={}",
-                activeQuest.getId(),
-                activeQuest.getQuest().getTitle(),
-                triggerMessageId,
-                totalMessageCount,
-                userAMessageCount,
-                userBMessageCount
-        );
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "[AI QUEST] gating - questId={}, title={}, triggerMessageId={}, total={}, userA={}, userB={}",
+                    activeQuest.getId(),
+                    activeQuest.getQuest().getTitle(),
+                    triggerMessageId,
+                    totalMessageCount,
+                    userAMessageCount,
+                    userBMessageCount
+            );
+        }
 
         questProgressService.updateQuestProgress(
                 activeQuest.getId(),
@@ -95,19 +97,25 @@ public class AiAnalysisQuestService {
                         && userBMessageCount >= MIN_MESSAGES_PER_USER;
 
         if (!enoughMessages || !bothUsersParticipated) {
-            log.info(
-                    "[AI QUEST] 평가 조건 미충족 - enoughMessages={}, bothUsersParticipated={}",
-                    enoughMessages,
-                    bothUsersParticipated
-            );
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "[AI QUEST] 평가 조건 미충족 - questId={}, enoughMessages={}, bothUsersParticipated={}",
+                        activeQuest.getId(),
+                        enoughMessages,
+                        bothUsersParticipated
+                );
+            }
             return Optional.empty();
         }
 
         if (!shouldEvaluateNow(totalMessageCount)) {
-            log.info(
-                    "[AI QUEST] 재평가 시점 아님 - totalMessageCount={}",
-                    totalMessageCount
-            );
+            if (log.isDebugEnabled()) {
+                log.debug(
+                        "[AI QUEST] 재평가 시점 아님 - questId={}, totalMessageCount={}",
+                        activeQuest.getId(),
+                        totalMessageCount
+                );
+            }
             return Optional.empty();
         }
 
@@ -121,9 +129,8 @@ public class AiAnalysisQuestService {
                         );
 
         log.info(
-                "[AI QUEST] AI 평가 시작 - questId={}, title={}, messageCount={}",
+                "[AI QUEST] AI 평가 시작 - questId={}, messageCount={}",
                 activeQuest.getId(),
-                activeQuest.getQuest().getTitle(),
                 messages.size()
         );
 
@@ -140,13 +147,21 @@ public class AiAnalysisQuestService {
                         && evaluation.reciprocalConversation;
 
         log.info(
-                "[AI QUEST] AI 평가 결과 - userAParticipated={}, userBParticipated={}, reciprocalConversation={}, completed={}, reason={}",
+                "[AI QUEST] AI 평가 결과 - questId={}, userA={}, userB={}, reciprocal={}, completed={}",
+                activeQuest.getId(),
                 evaluation.userAParticipated,
                 evaluation.userBParticipated,
                 evaluation.reciprocalConversation,
-                completed,
-                evaluation.reason
+                completed
         );
+
+        if (log.isDebugEnabled()) {
+            log.debug(
+                    "[AI QUEST] AI 평가 사유 - questId={}, reason={}",
+                    activeQuest.getId(),
+                    evaluation.reason
+            );
+        }
 
         if (!completed) {
             return Optional.empty();
