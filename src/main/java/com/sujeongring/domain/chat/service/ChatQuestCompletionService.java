@@ -113,7 +113,7 @@ public class ChatQuestCompletionService {
             events.add(
                     ChatEventResponse.informationUnlocked(
                             result.relationshipId(),
-                            result.newStage(),
+                            result.completedStage(),
                             getUnlockLabel(
                                     result.newStage()
                             )
@@ -136,6 +136,7 @@ public class ChatQuestCompletionService {
                             result.relationshipId(),
                             openedQuest.getId(),
                             openedQuest.getQuest().getStage(),
+                            openedQuest.getQuest().getQuestType(),
                             openedQuest.getQuest().getTitle(),
                             openedQuest.getQuest().getDescription()
                     )

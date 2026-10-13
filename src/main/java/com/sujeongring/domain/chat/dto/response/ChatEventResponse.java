@@ -1,6 +1,7 @@
 package com.sujeongring.domain.chat.dto.response;
 
 import com.sujeongring.domain.chat.enums.ChatEventType;
+import com.sujeongring.domain.quest.enums.QuestType;
 
 public record ChatEventResponse(
 
@@ -11,6 +12,10 @@ public record ChatEventResponse(
         Long relationshipQuestId,
 
         Integer stage,
+
+        Integer completedStage,
+
+        QuestType questType,
 
         String title,
 
@@ -23,6 +28,7 @@ public record ChatEventResponse(
             Long relationshipId,
             Long relationshipQuestId,
             Integer stage,
+            QuestType questType,
             String title,
             String description
     ) {
@@ -31,6 +37,8 @@ public record ChatEventResponse(
                 relationshipId,
                 relationshipQuestId,
                 stage,
+                null,
+                questType,
                 title,
                 description,
                 null
@@ -39,14 +47,16 @@ public record ChatEventResponse(
 
     public static ChatEventResponse informationUnlocked(
             Long relationshipId,
-            Integer stage,
+            Integer completedStage,
             String unlockLabel
     ) {
         return new ChatEventResponse(
                 ChatEventType.INFORMATION_UNLOCKED,
                 relationshipId,
                 null,
-                stage,
+                null,
+                completedStage,
+                null,
                 null,
                 null,
                 unlockLabel
@@ -60,7 +70,9 @@ public record ChatEventResponse(
                 ChatEventType.RELATIONSHIP_COMPLETED,
                 relationshipId,
                 null,
+                null,
                 4,
+                null,
                 null,
                 null,
                 null
