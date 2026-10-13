@@ -141,17 +141,25 @@ public class AiAnalysisQuestService {
                         messages
                 );
 
-        boolean completed =
-                evaluation.userAParticipated
-                        && evaluation.userBParticipated
-                        && evaluation.reciprocalConversation;
+        AiQuestEvaluationState state =
+                questProgressService.updateAiEvaluation(
+                        activeQuest.getId(),
+                        evaluation.userAParticipated,
+                        evaluation.userBParticipated,
+                        evaluation.reciprocalConversation
+                );
+
+        boolean completed = state.completed();
 
         log.info(
-                "[AI QUEST] AI 평가 결과 - questId={}, userA={}, userB={}, reciprocal={}, completed={}",
+                "[AI QUEST] AI 평가 결과 - questId={}, current=({}, {}, {}), accumulated=({}, {}, {}), completed={}",
                 activeQuest.getId(),
                 evaluation.userAParticipated,
                 evaluation.userBParticipated,
                 evaluation.reciprocalConversation,
+                state.userAParticipated(),
+                state.userBParticipated(),
+                state.reciprocalConversation(),
                 completed
         );
 

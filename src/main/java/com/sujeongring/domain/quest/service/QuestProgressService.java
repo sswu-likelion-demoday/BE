@@ -40,6 +40,37 @@ public class QuestProgressService {
     }
 
     @Transactional
+    public AiQuestEvaluationState updateAiEvaluation(
+            Long relationshipQuestId,
+            boolean userAParticipated,
+            boolean userBParticipated,
+            boolean reciprocalConversation
+    ) {
+        RelationshipQuest relationshipQuest =
+                relationshipQuestRepository
+                        .findByIdForUpdateWithDetails(
+                                relationshipQuestId
+                        )
+                        .orElseThrow(() ->
+                                new QuestException(
+                                        QuestErrorCode.QUEST_NOT_FOUND
+                                )
+                        );
+
+        relationshipQuest.updateAiEvaluation(
+                userAParticipated,
+                userBParticipated,
+                reciprocalConversation
+        );
+
+        return new AiQuestEvaluationState(
+                relationshipQuest.isUserAParticipated(),
+                relationshipQuest.isUserBParticipated(),
+                relationshipQuest.isReciprocalConversation()
+        );
+    }
+
+    @Transactional
     public QuestCompletionResult completeQuest(
             Long relationshipQuestId
     ) {
