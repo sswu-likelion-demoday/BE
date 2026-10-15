@@ -1,10 +1,12 @@
 package com.sujeongring.domain.relationship.service;
 
+import com.sujeongring.domain.quest.entity.AiQuiz;
 import com.sujeongring.domain.quest.entity.Quest;
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.enums.QuestCompletionType;
 import com.sujeongring.domain.quest.enums.QuestType;
 import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
+import com.sujeongring.domain.quest.repository.AiQuizRepository;
 import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import com.sujeongring.domain.relationship.dto.response.PartnerProfileResponse;
 import com.sujeongring.domain.relationship.dto.response.QuestResponseType;
@@ -37,6 +39,7 @@ public class RelationshipService {
 
     private final RelationshipRepository relationshipRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
+    private final AiQuizRepository aiQuizRepository;
     private final UserInterestRepository userInterestRepository;
     private final UserHobbyRepository userHobbyRepository;
     private final RelationshipUnlockPolicy relationshipUnlockPolicy;
@@ -340,22 +343,35 @@ public class RelationshipService {
         String partnerParticipationStatus = null;
 
         if (participationQuest) {
-            boolean isUserA =
-                    relationshipQuest.getRelationship().getUserA().getId().equals(currentUserId);
+            if (quest.getQuestType() == QuestType.AI_QUIZ) {
+                myParticipationStatus = resolveAiQuizParticipationStatus(
+                        relationshipQuest,
+                        currentUserId,
+                        true
+                );
+                partnerParticipationStatus = resolveAiQuizParticipationStatus(
+                        relationshipQuest,
+                        currentUserId,
+                        false
+                );
+            } else {
+                boolean isUserA =
+                        relationshipQuest.getRelationship().getUserA().getId().equals(currentUserId);
 
-            myParticipationStatus =
-                    (isUserA
-                            ? relationshipQuest.isUserAParticipated()
-                            : relationshipQuest.isUserBParticipated())
-                            ? "SUBMITTED"
-                            : "NOT_SUBMITTED";
+                myParticipationStatus =
+                        (isUserA
+                                ? relationshipQuest.isUserAParticipated()
+                                : relationshipQuest.isUserBParticipated())
+                                ? "SUBMITTED"
+                                : "NOT_SUBMITTED";
 
-            partnerParticipationStatus =
-                    (isUserA
-                            ? relationshipQuest.isUserBParticipated()
-                            : relationshipQuest.isUserAParticipated())
-                            ? "SUBMITTED"
-                            : "NOT_SUBMITTED";
+                partnerParticipationStatus =
+                        (isUserA
+                                ? relationshipQuest.isUserBParticipated()
+                                : relationshipQuest.isUserAParticipated())
+                                ? "SUBMITTED"
+                                : "NOT_SUBMITTED";
+            }
         }
 
         return new RelationshipProgressResponse.QuestItem(
@@ -366,6 +382,30 @@ public class RelationshipService {
                 myParticipationStatus,
                 partnerParticipationStatus
         );
+    }
+
+    private String resolveAiQuizParticipationStatus(
+            RelationshipQuest relationshipQuest,
+            Long currentUserId,
+            boolean forCurrentUser
+    ) {
+        Relationship relationship = relationshipQuest.getRelationship();
+        Long targetUserId = forCurrentUser
+                ? currentUserId
+                : (relationship.getUserA().getId().equals(currentUserId)
+                ? relationship.getUserB().getId()
+                : relationship.getUserA().getId());
+
+        AiQuiz aiQuiz = aiQuizRepository
+                .findByRelationshipQuestIdAndAnswerUserId(
+                        relationshipQuest.getId(),
+                        targetUserId
+                )
+                .orElse(null);
+
+        return aiQuiz != null && aiQuiz.isAnswered()
+                ? "SUBMITTED"
+                : "NOT_SUBMITTED";
     }
 
     private QuestResponseType getQuestResponseType(
