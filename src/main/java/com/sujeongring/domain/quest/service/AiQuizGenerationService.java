@@ -43,7 +43,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AiQuizGenerationService {
 
-    private final RelationshipRepository relationshipRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatMessageRepository chatMessageRepository;
@@ -59,20 +58,19 @@ public class AiQuizGenerationService {
             Long relationshipQuestId,
             Long userId
     ) {
-        Relationship relationship = relationshipRepository.findById(relationshipId)
-                .orElseThrow(() -> new RelationshipException(RelationshipErrorCode.RELATIONSHIP_NOT_FOUND));
+        RelationshipQuest relationshipQuest = relationshipQuestRepository.findDetailById(relationshipQuestId)
+                .orElseThrow(() -> new QuestException(QuestErrorCode.RELATIONSHIP_QUEST_NOT_FOUND));
+
+        Relationship relationship = relationshipQuest.getRelationship();
+
+        if (!relationship.getId().equals(relationshipId)) {
+            throw new QuestException(QuestErrorCode.RELATIONSHIP_QUEST_NOT_FOUND);
+        }
 
         validateParticipant(relationship, userId);
 
         if (relationship.getStatus() == RelationshipStatus.ENDED) {
             throw new RelationshipException(RelationshipErrorCode.RELATIONSHIP_ENDED);
-        }
-
-        RelationshipQuest relationshipQuest = relationshipQuestRepository.findById(relationshipQuestId)
-                .orElseThrow(() -> new QuestException(QuestErrorCode.RELATIONSHIP_QUEST_NOT_FOUND));
-
-        if (!relationshipQuest.getRelationship().getId().equals(relationshipId)) {
-            throw new QuestException(QuestErrorCode.RELATIONSHIP_QUEST_NOT_FOUND);
         }
 
         if (relationshipQuest.getStatus() != RelationshipQuestStatus.ACTIVE) {
