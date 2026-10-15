@@ -172,7 +172,9 @@ public class AiQuizGenerationService {
                 relationshipQuest
         );
 
-        List<AiQuizResponse.Option> options = generationResult.options().stream()
+        AiQuizGenerationResult shuffled = shuffleCorrectOption(generationResult);
+
+        List<AiQuizResponse.Option> options = shuffled.options().stream()
                 .map(option -> new AiQuizResponse.Option(option.optionId(), option.content()))
                 .toList();
 
@@ -190,9 +192,9 @@ public class AiQuizGenerationService {
                 relationshipQuest,
                 targetUser,
                 answerUser,
-                generationResult.question(),
+                shuffled.question(),
                 optionsJson,
-                generationResult.correctOption()
+                shuffled.correctOption()
         );
 
         return aiQuizPersistenceService.saveGeneratedQuiz(aiQuiz);
@@ -208,6 +210,34 @@ public class AiQuizGenerationService {
         } catch (QuestException exception) {
             return buildFallbackQuiz(targetUser, relationshipQuest.getQuest().getStage());
         }
+    }
+
+    private AiQuizGenerationResult shuffleCorrectOption(AiQuizGenerationResult result) {
+        List<AiQuizGenerationResult.Option> options = new ArrayList<>(result.options());
+        java.util.Collections.shuffle(options);
+
+        int correctIndex = -1;
+        for (int i = 0; i < options.size(); i++) {
+            if (options.get(i).optionId() == result.correctOption()) {
+                correctIndex = i + 1;
+                break;
+            }
+        }
+
+        if (correctIndex == -1) {
+            return result;
+        }
+
+        List<AiQuizGenerationResult.Option> reordered = new ArrayList<>();
+        for (int i = 0; i < options.size(); i++) {
+            reordered.add(new AiQuizGenerationResult.Option(i + 1, options.get(i).content()));
+        }
+
+        return new AiQuizGenerationResult(
+                result.question(),
+                reordered,
+                correctIndex
+        );
     }
 
     private List<ChatMessage> loadStageMessages(
