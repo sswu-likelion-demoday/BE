@@ -23,6 +23,8 @@ public interface ChatMessageRepository
             Pageable pageable
     );
 
+    List<ChatMessage> findByChatRoomIdOrderByIdAsc(Long chatRoomId);
+
     List<ChatMessage> findByChatRoomIdAndIdLessThanOrderByIdDesc(
             Long chatRoomId,
             Long cursor,
@@ -132,5 +134,22 @@ public interface ChatMessageRepository
             @Param("messageType") MessageType messageType,
             @Param("openedAt") LocalDateTime openedAt,
             @Param("triggerMessageId") Long triggerMessageId
+    );
+
+    @Query("""
+        SELECT m
+        FROM ChatMessage m
+        JOIN FETCH m.sender s
+        WHERE m.chatRoom.id = :chatRoomId
+          AND m.messageType = :messageType
+          AND m.createdAt >= :stageOpenedAt
+          AND m.createdAt < :quizOpenedAt
+        ORDER BY m.id ASC
+        """)
+    List<ChatMessage> findStageMessages(
+            @Param("chatRoomId") Long chatRoomId,
+            @Param("messageType") MessageType messageType,
+            @Param("stageOpenedAt") LocalDateTime stageOpenedAt,
+            @Param("quizOpenedAt") LocalDateTime quizOpenedAt
     );
 }

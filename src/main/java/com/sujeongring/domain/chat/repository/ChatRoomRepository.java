@@ -37,4 +37,14 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
     Optional<ChatRoom> findDetailById(
             @Param("chatRoomId") Long chatRoomId
     );
+
+    @Query("""
+        SELECT cr
+        FROM ChatRoom cr
+        JOIN FETCH cr.relationship r
+        WHERE r.id = :relationshipId
+        """)
+    Optional<ChatRoom> findByRelationshipId(
+            @Param("relationshipId") Long relationshipId
+    );
 }
