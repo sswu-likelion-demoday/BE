@@ -39,6 +39,12 @@ public enum QuestErrorCode implements ErrorCode {
             "퀘스트를 찾을 수 없습니다."
     ),
 
+    RELATIONSHIP_QUEST_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "RELATIONSHIP_QUEST_NOT_FOUND",
+            "관계 퀘스트를 찾을 수 없습니다."
+    ),
+
     QUEST_NOT_ACTIVE(
             HttpStatus.CONFLICT,
             "QUEST_NOT_ACTIVE",
@@ -49,6 +55,30 @@ public enum QuestErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "QUEST_STAGE_MISMATCH",
             "현재 관계 단계의 퀘스트가 아닙니다."
+    ),
+
+    QUEST_TYPE_MISMATCH(
+            HttpStatus.BAD_REQUEST,
+            "QUEST_TYPE_MISMATCH",
+            "AI_QUIZ 타입의 퀘스트가 아닙니다."
+    ),
+
+    AI_QUIZ_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "AI_QUIZ_NOT_FOUND",
+            "현재 사용자의 AI 퀴즈를 찾을 수 없습니다."
+    ),
+
+    QUIZ_OPTION_INVALID(
+            HttpStatus.BAD_REQUEST,
+            "QUIZ_OPTION_INVALID",
+            "유효하지 않은 퀴즈 선택지입니다."
+    ),
+
+    QUIZ_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "QUIZ_ALREADY_SUBMITTED",
+            "이미 제출한 퀴즈 답변입니다."
     ),
 
     AI_EVALUATION_FAILED(
