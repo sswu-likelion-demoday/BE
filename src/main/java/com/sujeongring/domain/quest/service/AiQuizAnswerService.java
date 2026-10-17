@@ -21,6 +21,8 @@ import com.sujeongring.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -101,16 +103,6 @@ public class AiQuizAnswerService {
         if (partnerSubmitted) {
             completionResult = questProgressService.completeQuest(relationshipQuestId);
             questCompleted = true;
-
-            ChatRoom chatRoom = chatRoomRepository.findByRelationshipId(relationship.getId())
-                    .orElse(null);
-
-            if (chatRoom != null && completionResult != null) {
-                chatQuestProcessingService.processQuestCompletionAsync(
-                        chatRoom.getId(),
-                        completionResult
-                );
-            }
         }
 
         AiQuizResponse.Option correctAnswer = findCorrectAnswer(options, myQuiz.getCorrectOption());
@@ -118,12 +110,34 @@ public class AiQuizAnswerService {
 
         AiQuizAnswerResponse.CompletionInfo completionInfo = null;
         if (questCompleted && completionResult != null) {
+            final QuestCompletionResult finalizedCompletionResult = completionResult;
+            final Long completionRelationshipId = relationship.getId();
+
             completionInfo = new AiQuizAnswerResponse.CompletionInfo(
-                    completionResult.stageCompleted(),
-                    completionResult.completedStage(),
-                    completionResult.newStage(),
-                    resolveUnlockLabel(completionResult)
+                    finalizedCompletionResult.stageCompleted(),
+                    finalizedCompletionResult.completedStage(),
+                    finalizedCompletionResult.newStage(),
+                    resolveUnlockLabel(finalizedCompletionResult)
             );
+
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                ChatRoom chatRoom = chatRoomRepository.findByRelationshipId(completionRelationshipId)
+                                        .orElse(null);
+
+                                if (chatRoom != null) {
+                                    chatQuestProcessingService.processQuestCompletionAsync(
+                                            chatRoom.getId(),
+                                            finalizedCompletionResult
+                                    );
+                                }
+                            }
+                        }
+                );
+            }
         }
 
         return new AiQuizAnswerResponse(
