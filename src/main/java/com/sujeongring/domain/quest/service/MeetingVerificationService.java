@@ -66,7 +66,10 @@ public class MeetingVerificationService {
         }
 
         if (relationshipQuest.getQuest().getQuestType() != QuestType.MEETING_VERIFICATION) {
-            throw new QuestException(QuestErrorCode.QUEST_TYPE_MISMATCH);
+            throw new QuestException(
+                    QuestErrorCode.QUEST_TYPE_MISMATCH,
+                    "만남 인증 퀘스트가 아닙니다."
+            );
         }
 
         if (meetingVerificationRepository
@@ -95,7 +98,9 @@ public class MeetingVerificationService {
 
         return new MeetingVerificationResponse(
                 true,
-                completionResult.partnerVerified() ? "VERIFIED" : "NOT_VERIFIED",
+                completionResult.partnerVerified()
+                        ? com.sujeongring.domain.quest.enums.ParticipationStatus.SUBMITTED.name()
+                        : com.sujeongring.domain.quest.enums.ParticipationStatus.NOT_SUBMITTED.name(),
                 completionResult.questCompleted(),
                 completionResult.relationshipCompleted(),
                 completionResult.relationshipCompleted()
