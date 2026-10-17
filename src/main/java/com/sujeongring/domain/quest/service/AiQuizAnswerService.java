@@ -144,7 +144,9 @@ public class AiQuizAnswerService {
                 correct,
                 correctAnswer,
                 reward,
-                partnerSubmitted ? "SUBMITTED" : "NOT_SUBMITTED",
+                partnerSubmitted
+                        ? com.sujeongring.domain.quest.enums.ParticipationStatus.SUBMITTED.name()
+                        : com.sujeongring.domain.quest.enums.ParticipationStatus.NOT_SUBMITTED.name(),
                 questCompleted,
                 completionInfo
         );

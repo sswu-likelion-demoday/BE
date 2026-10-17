@@ -400,8 +400,8 @@ public class RelationshipService {
                 .orElse(null);
 
         return aiQuiz != null && aiQuiz.isAnswered()
-                ? "SUBMITTED"
-                : "NOT_SUBMITTED";
+                ? com.sujeongring.domain.quest.enums.ParticipationStatus.SUBMITTED.name()
+                : com.sujeongring.domain.quest.enums.ParticipationStatus.NOT_SUBMITTED.name();
     }
 
     private String resolveMeetingVerificationParticipationStatus(
@@ -423,7 +423,9 @@ public class RelationshipService {
                 )
                 .isPresent();
 
-        return verified ? "SUBMITTED" : "NOT_SUBMITTED";
+        return verified
+                ? com.sujeongring.domain.quest.enums.ParticipationStatus.SUBMITTED.name()
+                : com.sujeongring.domain.quest.enums.ParticipationStatus.NOT_SUBMITTED.name();
     }
 
     private QuestResponseType getQuestResponseType(
