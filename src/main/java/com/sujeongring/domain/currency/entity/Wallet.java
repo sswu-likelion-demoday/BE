@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -32,6 +33,9 @@ public class Wallet {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "last_daily_reset_date")
+    private LocalDate lastDailyResetDate;
+
     public Wallet(User user) {
         this.user = user;
         this.balance = 0;
@@ -42,6 +46,31 @@ public class Wallet {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+    }
+
+    public void deduct(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException(
+                    "차감 금액은 0보다 커야 합니다."
+            );
+        }
+
+        if (balance < amount) {
+            throw new IllegalStateException(
+                    "수정구 잔액이 부족합니다."
+            );
+        }
+
+        this.balance -= amount;
+    }
+
+    public void resetDailyBalance(LocalDate today) {
+        if (today.equals(lastDailyResetDate)) {
+            return;
+        }
+
+        this.balance = 3;
+        this.lastDailyResetDate = today;
     }
 
     @PreUpdate
