@@ -1,3 +1,4 @@
+
 package com.sujeongring.domain.matching.repository;
 
 import com.sujeongring.domain.matching.entity.MatchUsage;
@@ -9,9 +10,10 @@ import java.time.LocalDateTime;
 public interface MatchUsageRepository
         extends JpaRepository<MatchUsage, Long> {
 
-    long countByUserIdAndUsageTypeAndCreatedAtGreaterThanEqual(
+    long countByUserIdAndUsageTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Long userId,
             MatchUsageType usageType,
-            LocalDateTime startDateTime
+            LocalDateTime startDateTime,
+            LocalDateTime endDateTime
     );
 }

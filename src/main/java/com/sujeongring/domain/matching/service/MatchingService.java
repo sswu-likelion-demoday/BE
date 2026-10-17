@@ -1,10 +1,14 @@
 
 package com.sujeongring.domain.matching.service;
 
+import com.sujeongring.domain.currency.service.CurrencyService;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
+import com.sujeongring.domain.matching.entity.MatchUsage;
+import com.sujeongring.domain.matching.enums.MatchUsageType;
 import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.matching.exception.MatchingErrorCode;
 import com.sujeongring.domain.matching.repository.MatchRecommendationRepository;
+import com.sujeongring.domain.matching.repository.MatchUsageRepository;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.UserStatus;
 import com.sujeongring.domain.user.repository.UserRepository;
@@ -14,21 +18,31 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 @RequiredArgsConstructor
 public class MatchingService {
 
+    private final CurrencyService currencyService;
+    private static final int DAILY_FREE_LIMIT = 3;
+    private static final ZoneId KOREA_ZONE =
+            ZoneId.of("Asia/Seoul");
+
     private final UserRepository userRepository;
     private final MatchRecommendationRepository matchRecommendationRepository;
+    private final MatchUsageRepository matchUsageRepository;
+    private final MatchingScoreService matchingScoreService;
 
     @Transactional
     public MatchRecommendation matchNormal(Long userId) {
 
-        // 1. 현재 사용자 조회
-        User user = userRepository.findById(userId)
+        // 1. 사용자 조회
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new BaseException(
                         MatchingErrorCode.USER_NOT_FOUND
                 ));
@@ -47,37 +61,78 @@ public class MatchingService {
             );
         }
 
-        // 4. 매칭 가능한 후보 조회
+        // 4. 오늘 무료 매칭 사용 횟수 조회
+        LocalDate today = LocalDate.now(KOREA_ZONE);
+
+        LocalDateTime start = today.atStartOfDay();
+        LocalDateTime end = today.plusDays(1).atStartOfDay();
+
+        long usedCount =
+                matchUsageRepository
+                        .countByUserIdAndUsageTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                                userId,
+                                MatchUsageType.FREE,
+                                start,
+                                end
+                        );
+
+        // 5. 하루 무료 매칭 3회 제한
+        MatchUsageType usageType;
+
+        if (usedCount < DAILY_FREE_LIMIT) {
+            usageType = MatchUsageType.FREE;
+        } else {
+            usageType = MatchUsageType.PAID;
+        }
+
+        // 6. 추천 가능한 후보 조회
         List<User> candidates =
                 userRepository.findEligibleMatchingCandidates(
                         userId,
                         UserStatus.ACTIVE
                 );
 
-        // 5. 매칭 후보가 없는 경우
         if (candidates.isEmpty()) {
             throw new BaseException(
                     MatchingErrorCode.NO_MATCHING_CANDIDATE
             );
         }
 
-        // 6. 랜덤으로 후보 선정
-        int randomIndex = ThreadLocalRandom.current()
-                .nextInt(candidates.size());
+        // 7. 유사도가 가장 높은 후보 선정
+        User candidate = candidates.stream()
+                .max(Comparator.comparingDouble(
+                        c -> matchingScoreService.calculateScore(user, c)
+                ))
+                .orElseThrow(() -> new BaseException(
+                        MatchingErrorCode.NO_MATCHING_CANDIDATE
+                ));
 
-        User candidate = candidates.get(randomIndex);
+        // 8. 유사도 점수 계산
+        int score = (int) Math.round(
+                matchingScoreService.calculateScore(user, candidate)
+        );
 
-        // 7. 매칭 추천 객체 생성
+        // 9. 추천 결과 저장
         MatchRecommendation recommendation =
-                new MatchRecommendation(
-                        user,
-                        candidate,
-                        MatchingType.NORMAL,
-                        null,
-                        null
+                matchRecommendationRepository.save(
+                        new MatchRecommendation(
+                                user,
+                                candidate,
+                                MatchingType.NORMAL,
+                                score,
+                                null
+                        )
                 );
 
-        // 8. 매칭 추천 결과 저장
-        return matchRecommendationRepository.save(recommendation);
+        // 10. 무료 매칭 사용 기록 저장
+        matchUsageRepository.save(
+                new MatchUsage(
+                        user,
+                        recommendation,
+                        usageType
+                )
+        );
+
+        return recommendation;
     }
 }
