@@ -6,6 +6,7 @@ import com.sujeongring.domain.chat.repository.ChatMessageRepository;
 import com.sujeongring.domain.chat.repository.ChatRoomRepository;
 import com.sujeongring.domain.quest.dto.response.AiQuizGenerationResult;
 import com.sujeongring.domain.quest.dto.response.AiQuizResponse;
+import org.springframework.dao.DataIntegrityViolationException;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
@@ -197,7 +198,21 @@ public class AiQuizGenerationService {
                 shuffled.correctOption()
         );
 
-        return aiQuizPersistenceService.saveGeneratedQuiz(aiQuiz);
+        try {
+            return aiQuizPersistenceService.saveGeneratedQuiz(aiQuiz);
+        } catch (DataIntegrityViolationException exception) {
+            return aiQuizRepository
+                    .findByRelationshipQuestIdAndAnswerUserId(
+                            relationshipQuest.getId(),
+                            answerUser.getId()
+                    )
+                    .orElseThrow(() ->
+                            new QuestException(
+                                    QuestErrorCode.AI_QUIZ_NOT_FOUND,
+                                    "퀴즈를 생성할 수 없어 다시 조회하던 중 실패했습니다."
+                            )
+                    );
+        }
     }
 
     private AiQuizGenerationResult generateWithFallback(
