@@ -81,11 +81,12 @@ public class AiQuizGenerator {
             );
         }
 
-        if (result.options().stream()
+        List<Integer> optionIds = result.options().stream()
                 .map(AiQuizGenerationResult.Option::optionId)
-                .toList()
-                .stream()
-                .anyMatch(optionId -> optionId < 1 || optionId > 4)) {
+                .toList();
+
+        if (optionIds.stream().anyMatch(optionId -> optionId < 1 || optionId > 4)
+                || optionIds.stream().distinct().count() != 4) {
             throw new QuestException(
                     QuestErrorCode.AI_EVALUATION_FAILED,
                     "AI 퀴즈 선택지 번호가 올바르지 않습니다."
@@ -118,8 +119,9 @@ public class AiQuizGenerator {
             if (message.getSender() != null) {
                 speaker = message.getSender().getNickname();
             }
+            String escapedSpeaker = escapeForPrompt(speaker);
             builder.append("  <message speaker=\"")
-                    .append(speaker)
+                    .append(escapedSpeaker)
                     .append("\">")
                     .append(escapeForPrompt(message.getContent()))
                     .append("</message>\n");
@@ -216,7 +218,7 @@ public class AiQuizGenerator {
             - options: optionId 1~4를 가진 선택지 4개
             - correctOption: 실제 정답 선택지의 optionId
             """.formatted(
-                targetUser.getNickname(),
+                escapeForPrompt(targetUser.getNickname()),
                 conversation
         );
     }
@@ -228,6 +230,7 @@ public class AiQuizGenerator {
         return rawText
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")
-                .replace(">", "&gt;");
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 }
