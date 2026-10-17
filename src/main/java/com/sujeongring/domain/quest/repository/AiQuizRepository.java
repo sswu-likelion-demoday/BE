@@ -8,4 +8,9 @@ import java.util.Optional;
 public interface AiQuizRepository extends JpaRepository<AiQuiz, Long> {
 
     Optional<AiQuiz> findByRelationshipQuestId(Long relationshipQuestId);
+
+    Optional<AiQuiz> findByRelationshipQuestIdAndAnswerUserId(
+            Long relationshipQuestId,
+            Long answerUserId
+    );
 }

@@ -92,6 +92,10 @@ public class AiQuiz {
         this.answeredAt = LocalDateTime.now();
     }
 
+    public boolean isAnswered() {
+        return this.status == AiQuizStatus.ANSWERED;
+    }
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

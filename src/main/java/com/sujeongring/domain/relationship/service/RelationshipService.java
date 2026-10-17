@@ -1,10 +1,12 @@
 package com.sujeongring.domain.relationship.service;
 
+import com.sujeongring.domain.quest.entity.AiQuiz;
 import com.sujeongring.domain.quest.entity.Quest;
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.enums.QuestCompletionType;
 import com.sujeongring.domain.quest.enums.QuestType;
 import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
+import com.sujeongring.domain.quest.repository.AiQuizRepository;
 import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import com.sujeongring.domain.relationship.dto.response.PartnerProfileResponse;
 import com.sujeongring.domain.relationship.dto.response.QuestResponseType;
@@ -37,6 +39,7 @@ public class RelationshipService {
 
     private final RelationshipRepository relationshipRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
+    private final AiQuizRepository aiQuizRepository;
     private final UserInterestRepository userInterestRepository;
     private final UserHobbyRepository userHobbyRepository;
     private final RelationshipUnlockPolicy relationshipUnlockPolicy;
@@ -85,7 +88,8 @@ public class RelationshipService {
                                         questsByStage.getOrDefault(
                                                 stage,
                                                 List.of()
-                                        )
+                                        ),
+                                        userId
                                 )
                         )
                         .toList();
@@ -248,7 +252,8 @@ public class RelationshipService {
     private RelationshipProgressResponse.StageItem buildStage(
             Relationship relationship,
             int stage,
-            List<RelationshipQuest> quests
+            List<RelationshipQuest> quests,
+            Long currentUserId
     ) {
 
         RelationshipProgressResponse.StageStatus stageStatus =
@@ -263,7 +268,6 @@ public class RelationshipService {
                         ? RelationshipProgressResponse.UnlockStatus.UNLOCKED
                         : RelationshipProgressResponse.UnlockStatus.LOCKED;
 
-        // 아직 도달하지 않은 단계 - 퀘스트 상세 공개 X, 진행도도 공개 X, 단계명 + 해금 정보만 표시
         if (stageStatus
                 == RelationshipProgressResponse.StageStatus.LOCKED) {
 
@@ -289,16 +293,10 @@ public class RelationshipService {
 
         List<RelationshipQuest> visibleQuests;
 
-        // 완료 단계 -> 해당 단계의 퀘스트 표시
         if (stageStatus
                 == RelationshipProgressResponse.StageStatus.COMPLETED) {
-
             visibleQuests = quests;
-        }
-
-        // 현재 진행 단계 -> completed + 현재 active까지 퀘스트 표시, 앞으로 남은 locked 퀘스트는 아직 비공개
-        else {
-
+        } else {
             visibleQuests = quests.stream()
                     .filter(quest ->
                             quest.getStatus()
@@ -309,21 +307,18 @@ public class RelationshipService {
 
         List<RelationshipProgressResponse.QuestItem> questItems =
                 visibleQuests.stream()
-                        .map(this::toQuestItem)
+                        .map(quest -> toQuestItem(quest, currentUserId))
                         .toList();
 
         return new RelationshipProgressResponse.StageItem(
                 stage,
                 getStageName(stage),
                 stageStatus,
-
                 new RelationshipProgressResponse.QuestProgress(
                         completedCount,
                         quests.size()
                 ),
-
                 questItems,
-
                 new RelationshipProgressResponse.Unlock(
                         unlockStatus,
                         getUnlockLabel(stage)
@@ -332,7 +327,8 @@ public class RelationshipService {
     }
 
     private RelationshipProgressResponse.QuestItem toQuestItem(
-            RelationshipQuest relationshipQuest
+            RelationshipQuest relationshipQuest,
+            Long currentUserId
     ) {
 
         Quest quest =
@@ -343,25 +339,73 @@ public class RelationshipService {
                         || quest.getQuestType()
                         == QuestType.MEETING_VERIFICATION;
 
-        // AI 퀴즈 / 만남 인증 참여 상태는 추후 구현 후 실제 값으로 교체
-        String myParticipationStatus =
-                participationQuest
-                        ? null
-                        : null;
+        String myParticipationStatus = null;
+        String partnerParticipationStatus = null;
 
-        String partnerParticipationStatus =
-                participationQuest
-                        ? null
-                        : null;
+        if (participationQuest) {
+            if (quest.getQuestType() == QuestType.AI_QUIZ) {
+                myParticipationStatus = resolveAiQuizParticipationStatus(
+                        relationshipQuest,
+                        currentUserId,
+                        true
+                );
+                partnerParticipationStatus = resolveAiQuizParticipationStatus(
+                        relationshipQuest,
+                        currentUserId,
+                        false
+                );
+            } else {
+                boolean isUserA =
+                        relationshipQuest.getRelationship().getUserA().getId().equals(currentUserId);
+
+                myParticipationStatus =
+                        (isUserA
+                                ? relationshipQuest.isUserAParticipated()
+                                : relationshipQuest.isUserBParticipated())
+                                ? "SUBMITTED"
+                                : "NOT_SUBMITTED";
+
+                partnerParticipationStatus =
+                        (isUserA
+                                ? relationshipQuest.isUserBParticipated()
+                                : relationshipQuest.isUserAParticipated())
+                                ? "SUBMITTED"
+                                : "NOT_SUBMITTED";
+            }
+        }
 
         return new RelationshipProgressResponse.QuestItem(
                 relationshipQuest.getId(),
                 quest.getTitle(),
                 getQuestResponseType(quest),
                 relationshipQuest.getStatus(),
-                null,
-                null
+                myParticipationStatus,
+                partnerParticipationStatus
         );
+    }
+
+    private String resolveAiQuizParticipationStatus(
+            RelationshipQuest relationshipQuest,
+            Long currentUserId,
+            boolean forCurrentUser
+    ) {
+        Relationship relationship = relationshipQuest.getRelationship();
+        Long targetUserId = forCurrentUser
+                ? currentUserId
+                : (relationship.getUserA().getId().equals(currentUserId)
+                ? relationship.getUserB().getId()
+                : relationship.getUserA().getId());
+
+        AiQuiz aiQuiz = aiQuizRepository
+                .findByRelationshipQuestIdAndAnswerUserId(
+                        relationshipQuest.getId(),
+                        targetUserId
+                )
+                .orElse(null);
+
+        return aiQuiz != null && aiQuiz.isAnswered()
+                ? "SUBMITTED"
+                : "NOT_SUBMITTED";
     }
 
     private QuestResponseType getQuestResponseType(

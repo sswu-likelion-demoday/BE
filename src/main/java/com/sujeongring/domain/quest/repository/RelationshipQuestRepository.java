@@ -41,6 +41,19 @@ public interface RelationshipQuestRepository
     @Query("""
         SELECT rq
         FROM RelationshipQuest rq
+        JOIN FETCH rq.relationship r
+        JOIN FETCH r.userA
+        JOIN FETCH r.userB
+        JOIN FETCH rq.quest q
+        WHERE rq.id = :relationshipQuestId
+        """)
+    Optional<RelationshipQuest> findDetailById(
+            @Param("relationshipQuestId") Long relationshipQuestId
+    );
+
+    @Query("""
+        SELECT rq
+        FROM RelationshipQuest rq
         JOIN FETCH rq.quest q
         WHERE rq.relationship.id = :relationshipId
           AND rq.status = :status

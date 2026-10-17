@@ -37,27 +37,38 @@ public class ChatQuestProcessingService {
                 return;
             }
 
-            ChatQuestCompletionResult completionResult =
-                    questResult.get();
-
-            for (ChatMessageResponse systemMessage
-                    : completionResult.systemMessages()) {
-                messagingTemplate.convertAndSend(
-                        "/sub/chat/" + chatRoomId,
-                        systemMessage
-                );
-            }
-
-            for (ChatEventResponse event
-                    : completionResult.events()) {
-                messagingTemplate.convertAndSend(
-                        "/sub/chat/" + chatRoomId + "/events",
-                        event
-                );
-            }
+            publishQuestCompletion(
+                    chatRoomId,
+                    questResult.get()
+            );
         } catch (Exception exception) {
             log.warn(
                     "[QUEST] async quest processing failed - chatRoomId={}",
+                    chatRoomId,
+                    exception
+            );
+        }
+    }
+
+    @Async
+    public void processQuestCompletionAsync(
+            Long chatRoomId,
+            QuestCompletionResult questResult
+    ) {
+        try {
+            ChatQuestCompletionResult completionResult =
+                    chatQuestCompletionService.complete(
+                            chatRoomId,
+                            questResult
+                    );
+
+            publishQuestCompletion(
+                    chatRoomId,
+                    completionResult
+            );
+        } catch (Exception exception) {
+            log.warn(
+                    "[QUEST] async quiz completion processing failed - chatRoomId={}",
                     chatRoomId,
                     exception
             );
@@ -84,5 +95,26 @@ public class ChatQuestProcessingService {
                         questResult.get()
                 )
         );
+    }
+
+    private void publishQuestCompletion(
+            Long chatRoomId,
+            ChatQuestCompletionResult completionResult
+    ) {
+        for (ChatMessageResponse systemMessage
+                : completionResult.systemMessages()) {
+            messagingTemplate.convertAndSend(
+                    "/sub/chat/" + chatRoomId,
+                    systemMessage
+            );
+        }
+
+        for (ChatEventResponse event
+                : completionResult.events()) {
+            messagingTemplate.convertAndSend(
+                    "/sub/chat/" + chatRoomId + "/events",
+                    event
+            );
+        }
     }
 }
