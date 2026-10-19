@@ -82,8 +82,8 @@ public class MeetingVerificationAiService {
             throw exception;
         } catch (Exception exception) {
             throw new QuestException(
-                    QuestErrorCode.MEETING_VERIFICATION_FAILED,
-                    "인증 사진을 확인하기 어려워요. 다시 인증해주세요."
+                    QuestErrorCode.AI_EVALUATION_FAILED,
+                    "AI 판정 중 오류가 발생했습니다. 다시 시도해주세요."
             );
         }
     }
