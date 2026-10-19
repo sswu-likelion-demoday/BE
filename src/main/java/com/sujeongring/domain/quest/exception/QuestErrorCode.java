@@ -81,6 +81,18 @@ public enum QuestErrorCode implements ErrorCode {
             "이미 제출한 퀴즈 답변입니다."
     ),
 
+    MEETING_VERIFICATION_FAILED(
+            HttpStatus.BAD_REQUEST,
+            "MEETING_VERIFICATION_FAILED",
+            "만남 인증에 실패하였습니다. 다시 인증해주세요."
+    ),
+
+    MEETING_VERIFICATION_ALREADY_SUBMITTED(
+            HttpStatus.CONFLICT,
+            "MEETING_VERIFICATION_ALREADY_SUBMITTED",
+            "이미 만남 인증을 완료하였습니다."
+    ),
+
     AI_EVALUATION_FAILED(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "AI_EVALUATION_FAILED",
