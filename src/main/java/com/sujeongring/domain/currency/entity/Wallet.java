@@ -48,4 +48,16 @@ public class Wallet {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void useCurrency(int amount) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("차감 금액은 0보다 커야 합니다.");
+        }
+
+        if (balance < amount) {
+            throw new IllegalStateException("수정구 잔액이 부족합니다.");
+        }
+
+        this.balance -= amount;
+    }
 }
