@@ -22,10 +22,16 @@ public class MatchingController {
     private final NormalMatchingService normalMatchingService;
 
     @GetMapping("/status")
-    public DailyFreeMatchingStatusResponse getMatchingStatus(
+    public ApiResponse<DailyFreeMatchingStatusResponse> getMatchingStatus(
             @CurrentUserId Long userId
     ) {
-        return dailyFreeMatchingService.getStatus(userId);
+        DailyFreeMatchingStatusResponse response =
+                dailyFreeMatchingService.getStatus(userId);
+
+        return ApiResponse.success(
+                "매칭 이용 상태를 조회하였습니다.",
+                response
+        );
     }
 
     @PostMapping("/recommendations")

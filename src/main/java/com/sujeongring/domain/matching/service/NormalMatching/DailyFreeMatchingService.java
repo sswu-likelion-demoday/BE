@@ -11,6 +11,8 @@ import com.sujeongring.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.sujeongring.domain.currency.entity.Wallet;
+import com.sujeongring.domain.currency.repository.WalletRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,13 +27,43 @@ public class DailyFreeMatchingService {
 
     private final MatchUsageRepository matchUsageRepository;
     private final UserRepository userRepository;
+    private final WalletRepository walletRepository;
+
 
     @Transactional(readOnly = true)
     public DailyFreeMatchingStatusResponse getStatus(Long userId) {
+
         LocalDate today = LocalDate.now(KST);
         long used = countFreeUses(userId, today);
         int remaining = (int) Math.max(0, DAILY_FREE_LIMIT - used);
-        return new DailyFreeMatchingStatusResponse(today, DAILY_FREE_LIMIT, used, remaining);
+
+        DailyFreeMatchingStatusResponse.WeeklyMatching weeklyMatching =
+                new DailyFreeMatchingStatusResponse.WeeklyMatching(
+                        remaining,
+                        DAILY_FREE_LIMIT
+                );
+
+        Wallet wallet = walletRepository.findByUserId(userId)
+                .orElseThrow(() ->
+                        new IllegalStateException("사용자의 지갑이 존재하지 않습니다.")
+                );
+
+        int balance = wallet.getBalance();
+
+        int matchingCost = 30;
+        DailyFreeMatchingStatusResponse.Currency currency =
+                new DailyFreeMatchingStatusResponse.Currency(
+                        balance,
+                        matchingCost
+                );
+
+        String actionType = remaining > 0 ? "FREE" : "CURRENCY";
+
+        return new DailyFreeMatchingStatusResponse(
+                weeklyMatching,
+                currency,
+                actionType
+        );
     }
 
     @Transactional

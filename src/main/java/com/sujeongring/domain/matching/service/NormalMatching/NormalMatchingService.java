@@ -44,7 +44,6 @@ public class NormalMatchingService {
     @Transactional
     public MatchRecommendation matchNormal(Long userId) {
 
-        // 1. 사용자 조회 및 잠금
         User requester = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() ->
                         new IllegalArgumentException("사용자를 찾을 수 없습니다.")
@@ -58,12 +57,10 @@ public class NormalMatchingService {
             throw new IllegalStateException("온보딩을 완료해야 매칭할 수 있습니다.");
         }
 
-        // 2. 무료 매칭 횟수 확인
         boolean hasFreeMatch =
                 dailyFreeMatchingService.getStatus(userId)
-                        .freeRemainingToday() > 0;
+                        .weeklyMatching().remaining() > 0;
 
-        // 3. 유료 매칭이라면 수정구 잔액 확인
         Wallet wallet = null;
 
         if (!hasFreeMatch) {
@@ -77,14 +74,14 @@ public class NormalMatchingService {
             }
         }
 
-        // 4. 이전에 추천받은 후보 제외
+        // 이전에 추천받은 후보 제외
         Set<Long> previousCandidateIds = recommendationRepository
                 .findAllByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(r -> r.getCandidate().getId())
                 .collect(Collectors.toSet());
 
-        // 5. 매칭 가능한 사용자 조회
+        // 매칭 가능 사용자 조회
         List<User> candidates = userRepository.findAll().stream()
                 .filter(user -> !user.getId().equals(userId))
                 .filter(User::isOnboardingCompleted)
@@ -96,7 +93,7 @@ public class NormalMatchingService {
             throw new IllegalStateException("현재 매칭 가능한 사용자가 없습니다.");
         }
 
-        // 6. 온보딩 유사도 계산
+        // 온보딩 유사도 계산
         List<Long> candidateIds = candidates.stream()
                 .map(User::getId)
                 .toList();
@@ -104,7 +101,6 @@ public class NormalMatchingService {
         Map<Long, Integer> scores =
                 matchingService.scoreCandidates(userId, candidateIds);
 
-        // 7. 가장 높은 점수의 사용자 선택
         User selected = candidates.stream()
                 .max(Comparator
                         .comparingInt(
@@ -116,7 +112,6 @@ public class NormalMatchingService {
                         ))
                 .orElseThrow();
 
-        // 8. 추천 기록 저장
         MatchRecommendation recommendation =
                 recommendationRepository.save(
                         new MatchRecommendation(
@@ -128,7 +123,6 @@ public class NormalMatchingService {
                         )
                 );
 
-        // 9. 무료 / 유료 매칭 사용 처리
         if (hasFreeMatch) {
 
             dailyFreeMatchingService.recordSuccessfulFreeMatch(
@@ -159,7 +153,6 @@ public class NormalMatchingService {
             );
         }
 
-        // 10. 매칭 결과 반환
         return recommendation;
     }
 }
