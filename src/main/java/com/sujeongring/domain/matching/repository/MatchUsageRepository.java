@@ -9,9 +9,13 @@ import java.time.LocalDateTime;
 public interface MatchUsageRepository
         extends JpaRepository<MatchUsage, Long> {
 
-    long countByUserIdAndUsageTypeAndCreatedAtGreaterThanEqual(
+    long countByUser_IdAndUsageTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
             Long userId,
             MatchUsageType usageType,
-            LocalDateTime startDateTime
+            LocalDateTime start,
+            LocalDateTime end
     );
 }
+
+
+
