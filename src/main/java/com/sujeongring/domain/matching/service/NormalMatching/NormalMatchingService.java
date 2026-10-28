@@ -6,6 +6,7 @@ import com.sujeongring.domain.currency.enums.CurrencyReason;
 import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
 import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
 import com.sujeongring.domain.currency.repository.WalletRepository;
+import com.sujeongring.domain.matching.dto.response.MatchingHomeResponse;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
 import com.sujeongring.domain.matching.entity.MatchUsage;
 import com.sujeongring.domain.matching.enums.MatchUsageType;
@@ -46,6 +47,7 @@ public class NormalMatchingService {
     private final MatchUsageRepository matchUsageRepository;
     private final BlockRepository blockRepository;
     private final RelationshipRepository relationshipRepository;
+    private final MatchingHomeService matchingHomeService;
 
     @Transactional
     public MatchRecommendation matchNormal(Long userId) {
@@ -61,6 +63,14 @@ public class NormalMatchingService {
 
         if (!requester.isOnboardingCompleted()) {
             throw new IllegalStateException("온보딩을 완료해야 매칭할 수 있습니다.");
+        }
+
+        MatchingHomeResponse home = matchingHomeService.getHome(userId);
+
+        if (home.relationshipSlots().available() == 0) {
+            throw new IllegalStateException(
+                    "매칭 슬롯이 모두 사용 중입니다."
+            );
         }
 
         boolean hasFreeMatch =
