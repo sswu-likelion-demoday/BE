@@ -21,6 +21,8 @@ public class MatchingController {
     private final DailyFreeMatchingService dailyFreeMatchingService;
     private final NormalMatchingService normalMatchingService;
 
+    @GetMapping("/home")
+
     @GetMapping("/status")
     public ApiResponse<DailyFreeMatchingStatusResponse> getMatchingStatus(
             @CurrentUserId Long userId

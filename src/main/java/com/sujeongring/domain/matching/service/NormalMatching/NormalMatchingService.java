@@ -15,7 +15,13 @@ import com.sujeongring.domain.matching.repository.MatchUsageRepository;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.UserStatus;
 import com.sujeongring.domain.user.repository.UserRepository;
+import com.sujeongring.domain.user.repository.BlockRepository;
+import com.sujeongring.domain.user.entity.Block;
+import com.sujeongring.domain.relationship.repository.RelationshipRepository;
+import com.sujeongring.domain.relationship.enums.RelationshipStatus;
 
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +44,8 @@ public class NormalMatchingService {
     private final WalletRepository walletRepository;
     private final CurrencyTransactionRepository currencyTransactionRepository;
     private final MatchUsageRepository matchUsageRepository;
+    private final BlockRepository blockRepository;
+    private final RelationshipRepository relationshipRepository;
 
     @Transactional
     public MatchRecommendation matchNormal(Long userId) {
@@ -81,12 +87,55 @@ public class NormalMatchingService {
                 .map(r -> r.getCandidate().getId())
                 .collect(Collectors.toSet());
 
+        // 내가 차단했거나 나를 차단한 사용자 ID 수집
+        Set<Long> blockedUserIds = blockRepository
+                .findAllByBlockerIdOrBlockedId(userId, userId)
+                .stream()
+                .map(block -> {
+                    Long blockerId = block.getBlocker().getId();
+
+                    if (blockerId.equals(userId)) {
+                        // 내가 상대방을 차단한 경우
+                        return block.getBlocked().getId();
+                    } else {
+                        // 상대방이 나를 차단한 경우
+                        return blockerId;
+                    }
+                })
+                .collect(Collectors.toSet());
+
+
+        // 현재 나와 ACTIVE 관계인 사용자 ID 수집
+        Set<Long> activeRelationshipUserIds = relationshipRepository
+                .findAllByStatusAndUserAIdOrStatusAndUserBId(
+                        RelationshipStatus.ACTIVE,
+                        userId,
+                        RelationshipStatus.ACTIVE,
+                        userId
+                )
+                .stream()
+                .map(relationship -> {
+                    Long userAId = relationship.getUserA().getId();
+
+                    if (userAId.equals(userId)) {
+                        // 내가 userA라면 상대방은 userB
+                        return relationship.getUserB().getId();
+                    } else {
+                        // 내가 userB라면 상대방은 userA
+                        return userAId;
+                    }
+                })
+                .collect(Collectors.toSet());
+
+
         // 매칭 가능 사용자 조회
         List<User> candidates = userRepository.findAll().stream()
                 .filter(user -> !user.getId().equals(userId))
                 .filter(User::isOnboardingCompleted)
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
                 .filter(user -> !previousCandidateIds.contains(user.getId()))
+                .filter(user -> !blockedUserIds.contains(user.getId()))
+                .filter(user -> !activeRelationshipUserIds.contains(user.getId()))
                 .toList();
 
         if (candidates.isEmpty()) {
@@ -112,6 +161,11 @@ public class NormalMatchingService {
                         ))
                 .orElseThrow();
 
+        String introduction = matchingService.generateMatchingReason(
+                userId,
+                selected.getId()
+        );
+
         MatchRecommendation recommendation =
                 recommendationRepository.save(
                         new MatchRecommendation(
@@ -119,7 +173,8 @@ public class NormalMatchingService {
                                 selected,
                                 MatchingType.NORMAL,
                                 scores.getOrDefault(selected.getId(), 0),
-                                null
+                                null,
+                                introduction
                         )
                 );
 
