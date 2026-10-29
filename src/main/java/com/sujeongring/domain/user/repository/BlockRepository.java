@@ -19,4 +19,11 @@ public interface BlockRepository extends JpaRepository<Block, Long> {
             Long blockerId,
             Long blockedId
     );
+
+    boolean existsByBlockerIdAndBlockedIdOrBlockerIdAndBlockedId(
+            Long blockerId,
+            Long blockedId,
+            Long reverseBlockerId,
+            Long reverseBlockedId
+    );
 }

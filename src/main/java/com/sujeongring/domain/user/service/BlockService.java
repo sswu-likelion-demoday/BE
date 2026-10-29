@@ -1,0 +1,90 @@
+package com.sujeongring.domain.user.service;
+
+import com.sujeongring.domain.matching.entity.MatchRequest;
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
+import com.sujeongring.domain.matching.repository.MatchRequestRepository;
+import com.sujeongring.domain.relationship.entity.Relationship;
+import com.sujeongring.domain.relationship.enums.RelationshipStatus;
+import com.sujeongring.domain.relationship.repository.RelationshipRepository;
+import com.sujeongring.domain.user.entity.Block;
+import com.sujeongring.domain.user.entity.User;
+import com.sujeongring.domain.user.exception.UserErrorCode;
+import com.sujeongring.domain.user.repository.BlockRepository;
+import com.sujeongring.domain.user.repository.UserRepository;
+import com.sujeongring.global.error.exception.BaseException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class BlockService {
+
+    private final UserRepository userRepository;
+    private final BlockRepository blockRepository;
+    private final RelationshipRepository relationshipRepository;
+    private final MatchRequestRepository matchRequestRepository;
+
+    @Transactional
+    public void blockUser(Long blockerId, Long targetUserId) {
+        if (blockerId.equals(targetUserId)) {
+            throw new BaseException(UserErrorCode.BLOCK_SELF_NOT_ALLOWED);
+        }
+
+        User blocker = userRepository.findById(blockerId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        User target = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        if (blockRepository.existsByBlockerIdAndBlockedId(blockerId, targetUserId)) {
+            throw new BaseException(UserErrorCode.BLOCK_ALREADY_EXISTS);
+        }
+
+        Block block = new Block(blocker, target);
+        blockRepository.save(block);
+
+        List<Relationship> activeRelationships = relationshipRepository
+                .findAllByStatusAndUserAIdOrStatusAndUserBId(
+                        RelationshipStatus.ACTIVE,
+                        blockerId,
+                        RelationshipStatus.ACTIVE,
+                        targetUserId
+                );
+
+        for (Relationship relationship : activeRelationships) {
+            if ((relationship.getUserA().getId().equals(blockerId)
+                    && relationship.getUserB().getId().equals(targetUserId))
+                    || (relationship.getUserA().getId().equals(targetUserId)
+                    && relationship.getUserB().getId().equals(blockerId))) {
+                relationship.end();
+            }
+        }
+
+        List<MatchRequest> pendingRequests = matchRequestRepository
+                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(blockerId, MatchRequestStatus.PENDING);
+
+        pendingRequests.addAll(
+                matchRequestRepository
+                        .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(targetUserId, MatchRequestStatus.PENDING)
+        );
+
+        for (MatchRequest request : pendingRequests) {
+            if ((request.getSender().getId().equals(blockerId) && request.getReceiver().getId().equals(targetUserId))
+                    || (request.getSender().getId().equals(targetUserId) && request.getReceiver().getId().equals(blockerId))) {
+                request.cancel();
+            }
+        }
+    }
+
+    public boolean isBlockedBetween(Long userAId, Long userBId) {
+        if (userAId.equals(userBId)) {
+            return false;
+        }
+
+        return blockRepository.existsByBlockerIdAndBlockedId(userAId, userBId)
+                || blockRepository.existsByBlockerIdAndBlockedId(userBId, userAId);
+    }
+}
