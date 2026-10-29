@@ -6,6 +6,8 @@ import com.sujeongring.domain.matching.repository.MatchRequestRepository;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
 import com.sujeongring.domain.relationship.repository.RelationshipRepository;
+import com.sujeongring.domain.user.dto.response.BlockListResponse;
+import com.sujeongring.domain.user.dto.response.BlockedUserResponse;
 import com.sujeongring.domain.user.entity.Block;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.exception.UserErrorCode;
@@ -63,9 +65,11 @@ public class BlockService {
             }
         }
 
-        List<MatchRequest> pendingRequests = matchRequestRepository
-                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(blockerId, MatchRequestStatus.PENDING);
-
+        List<MatchRequest> pendingRequests = new java.util.ArrayList<>();
+        pendingRequests.addAll(
+                matchRequestRepository
+                        .findAllBySenderIdAndStatusOrderByCreatedAtDesc(blockerId, MatchRequestStatus.PENDING)
+        );
         pendingRequests.addAll(
                 matchRequestRepository
                         .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(targetUserId, MatchRequestStatus.PENDING)
@@ -79,6 +83,36 @@ public class BlockService {
         }
     }
 
+    @Transactional(readOnly = true)
+    public BlockListResponse getBlockedUsers(Long userId) {
+        List<BlockedUserResponse> blockedUsers = blockRepository.findAllByBlockerId(userId)
+                .stream()
+                .map(block -> new BlockedUserResponse(
+                        block.getBlocked().getId(),
+                        block.getBlocked().getNickname(),
+                        block.getCreatedAt()
+                ))
+                .toList();
+
+        return new BlockListResponse(blockedUsers);
+    }
+
+    @Transactional
+    public void unblockUser(Long blockerId, Long targetUserId) {
+        userRepository.findById(blockerId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        userRepository.findById(targetUserId)
+                .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        if (!blockRepository.existsByBlockerIdAndBlockedId(blockerId, targetUserId)) {
+            throw new BaseException(UserErrorCode.BLOCK_NOT_FOUND);
+        }
+
+        blockRepository.deleteByBlockerIdAndBlockedId(blockerId, targetUserId);
+    }
+
+    @Transactional(readOnly = true)
     public boolean isBlockedBetween(Long userAId, Long userBId) {
         if (userAId.equals(userBId)) {
             return false;

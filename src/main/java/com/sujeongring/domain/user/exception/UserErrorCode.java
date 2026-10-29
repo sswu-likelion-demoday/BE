@@ -38,6 +38,12 @@ public enum UserErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "BLOCK_ALREADY_EXISTS",
             "이미 차단한 사용자입니다."
+    ),
+
+    BLOCK_NOT_FOUND(
+            HttpStatus.NOT_FOUND,
+            "BLOCK_NOT_FOUND",
+            "해당 사용자를 차단한 기록이 없습니다."
     );
 
     private final HttpStatus status;

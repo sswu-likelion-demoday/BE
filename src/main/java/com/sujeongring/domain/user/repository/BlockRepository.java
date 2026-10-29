@@ -20,10 +20,5 @@ public interface BlockRepository extends JpaRepository<Block, Long> {
             Long blockedId
     );
 
-    boolean existsByBlockerIdAndBlockedIdOrBlockerIdAndBlockedId(
-            Long blockerId,
-            Long blockedId,
-            Long reverseBlockerId,
-            Long reverseBlockedId
-    );
+    void deleteByBlockerIdAndBlockedId(Long blockerId, Long blockedId);
 }
