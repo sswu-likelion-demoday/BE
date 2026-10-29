@@ -46,6 +46,24 @@ public class RelationshipService {
     private final UserHobbyRepository userHobbyRepository;
     private final RelationshipUnlockPolicy relationshipUnlockPolicy;
 
+    @Transactional
+    public void endRelationship(Long relationshipId, Long userId) {
+        Relationship relationship = relationshipRepository.findById(relationshipId)
+                .orElseThrow(() -> new RelationshipException(
+                        RelationshipErrorCode.RELATIONSHIP_NOT_FOUND
+                ));
+
+        validateParticipant(relationship, userId);
+
+        if (relationship.getStatus() != RelationshipStatus.ACTIVE) {
+            throw new RelationshipException(
+                    RelationshipErrorCode.RELATIONSHIP_NOT_ACTIVE
+            );
+        }
+
+        relationship.end();
+    }
+
     public RelationshipProgressResponse getRelationshipProgress(
             Long relationshipId,
             Long userId

@@ -76,6 +76,10 @@ public class Relationship {
     }
 
     public void end() {
+        if (this.status != RelationshipStatus.ACTIVE) {
+            throw new IllegalStateException("ACTIVE 상태인 관계만 종료할 수 있습니다.");
+        }
+
         this.status = RelationshipStatus.ENDED;
         this.endedAt = LocalDateTime.now();
     }
