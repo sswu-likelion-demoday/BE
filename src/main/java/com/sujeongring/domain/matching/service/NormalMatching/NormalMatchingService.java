@@ -6,7 +6,6 @@ import com.sujeongring.domain.currency.enums.CurrencyReason;
 import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
 import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
 import com.sujeongring.domain.currency.repository.WalletRepository;
-import com.sujeongring.domain.matching.dto.response.MatchingHomeResponse;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
 import com.sujeongring.domain.matching.entity.MatchUsage;
 import com.sujeongring.domain.matching.enums.MatchUsageType;
@@ -20,6 +19,7 @@ import com.sujeongring.domain.user.repository.BlockRepository;
 import com.sujeongring.domain.user.entity.Block;
 import com.sujeongring.domain.relationship.repository.RelationshipRepository;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
+import com.sujeongring.domain.relationship.service.RelationshipSlotService;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -48,6 +48,7 @@ public class NormalMatchingService {
     private final BlockRepository blockRepository;
     private final RelationshipRepository relationshipRepository;
     private final MatchingHomeService matchingHomeService;
+    private final RelationshipSlotService relationshipSlotService;
 
     @Transactional
     public MatchRecommendation matchNormal(Long userId) {
@@ -65,13 +66,7 @@ public class NormalMatchingService {
             throw new IllegalStateException("온보딩을 완료해야 매칭할 수 있습니다.");
         }
 
-        MatchingHomeResponse home = matchingHomeService.getHome(userId);
-
-        if (home.relationshipSlots().available() == 0) {
-            throw new IllegalStateException(
-                    "매칭 슬롯이 모두 사용 중입니다."
-            );
-        }
+        relationshipSlotService.validateAvailableSlot(userId);
 
         boolean hasFreeMatch =
                 dailyFreeMatchingService.getStatus(userId)
