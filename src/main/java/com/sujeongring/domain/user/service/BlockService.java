@@ -59,21 +59,15 @@ public class BlockService {
             relationship.endByBlock();
         }
 
-        List<MatchRequest> pendingRequests = new java.util.ArrayList<>();
-        pendingRequests.addAll(
-                matchRequestRepository
-                        .findAllBySenderIdAndStatusOrderByCreatedAtDesc(blockerId, MatchRequestStatus.PENDING)
-        );
-        pendingRequests.addAll(
-                matchRequestRepository
-                        .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(targetUserId, MatchRequestStatus.PENDING)
-        );
+        List<MatchRequest> pendingRequests = matchRequestRepository
+                .findPairRequestsByStatus(
+                        blockerId,
+                        targetUserId,
+                        MatchRequestStatus.PENDING
+                );
 
         for (MatchRequest request : pendingRequests) {
-            if ((request.getSender().getId().equals(blockerId) && request.getReceiver().getId().equals(targetUserId))
-                    || (request.getSender().getId().equals(targetUserId) && request.getReceiver().getId().equals(blockerId))) {
-                request.cancel();
-            }
+            request.cancel();
         }
     }
 
