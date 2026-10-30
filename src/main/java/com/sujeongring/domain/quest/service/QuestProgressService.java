@@ -1,6 +1,12 @@
 // 퀘스트 완료 후 채팅 후처리 공통 로직
 package com.sujeongring.domain.quest.service;
 
+import com.sujeongring.domain.currency.entity.CurrencyTransaction;
+import com.sujeongring.domain.currency.entity.Wallet;
+import com.sujeongring.domain.currency.enums.CurrencyReason;
+import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
+import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
+import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
 import com.sujeongring.domain.quest.exception.QuestErrorCode;
@@ -8,6 +14,7 @@ import com.sujeongring.domain.quest.exception.QuestException;
 import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
+import com.sujeongring.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +25,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QuestProgressService {
 
+    private static final int STAGE_COMPLETE_REWARD = 5;
+
     private final RelationshipQuestRepository relationshipQuestRepository;
+    private final WalletRepository walletRepository;
+    private final CurrencyTransactionRepository currencyTransactionRepository;
 
     @Transactional
     public void updateQuestProgress(
@@ -134,6 +145,7 @@ public class QuestProgressService {
         if (completedStage == 4) {
 
             relationship.complete();
+            grantStageCompletionReward(relationship);
 
             return QuestCompletionResult.relationshipCompleted(
                     relationship.getId(),
@@ -164,6 +176,7 @@ public class QuestProgressService {
                         );
 
         firstQuest.activate();
+        grantStageCompletionReward(relationship);
 
         return QuestCompletionResult.stageCompleted(
                 relationship.getId(),
@@ -202,5 +215,31 @@ public class QuestProgressService {
                     QuestErrorCode.QUEST_STAGE_MISMATCH
             );
         }
+    }
+
+    private void grantStageCompletionReward(Relationship relationship) {
+        grantReward(relationship.getUserA(), STAGE_COMPLETE_REWARD, CurrencyReason.RELATIONSHIP_REWARD);
+        grantReward(relationship.getUserB(), STAGE_COMPLETE_REWARD, CurrencyReason.RELATIONSHIP_REWARD);
+    }
+
+    private void grantReward(
+            User user,
+            int amount,
+            CurrencyReason reason
+    ) {
+        Wallet wallet = walletRepository.findByUserId(user.getId())
+                .orElseGet(() -> walletRepository.save(new Wallet(user)));
+
+        wallet.earnCurrency(amount);
+
+        currencyTransactionRepository.save(
+                new CurrencyTransaction(
+                        wallet,
+                        CurrencyTransactionType.EARN,
+                        reason,
+                        amount,
+                        wallet.getBalance()
+                )
+        );
     }
 }
