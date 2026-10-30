@@ -94,7 +94,7 @@ public class BlockService {
                 ))
                 .toList();
 
-        return new BlockListResponse(blockedUsers);
+        return new BlockListResponse(blockedUsers.size(), blockedUsers);
     }
 
     @Transactional
