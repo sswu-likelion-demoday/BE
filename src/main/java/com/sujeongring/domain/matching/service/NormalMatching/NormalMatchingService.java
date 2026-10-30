@@ -4,6 +4,8 @@ import com.sujeongring.domain.currency.entity.CurrencyTransaction;
 import com.sujeongring.domain.currency.entity.Wallet;
 import com.sujeongring.domain.currency.enums.CurrencyReason;
 import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
+import com.sujeongring.domain.currency.exception.CurrencyErrorCode;
+import com.sujeongring.domain.currency.exception.CurrencyException;
 import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
 import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
@@ -77,11 +79,11 @@ public class NormalMatchingService {
         if (!hasFreeMatch) {
             wallet = walletRepository.findByUserId(userId)
                     .orElseThrow(() ->
-                            new IllegalStateException("수정구 지갑이 없습니다.")
+                            new CurrencyException(CurrencyErrorCode.WALLET_NOT_FOUND)
                     );
 
             if (wallet.getBalance() < PAID_MATCH_COST) {
-                throw new IllegalStateException("수정구 잔액이 부족합니다.");
+                throw new CurrencyException(CurrencyErrorCode.INSUFFICIENT_CURRENCY_BALANCE);
             }
         }
 
