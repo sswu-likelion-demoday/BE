@@ -4,18 +4,30 @@ import com.sujeongring.domain.currency.entity.CurrencyTransaction;
 import com.sujeongring.domain.currency.entity.Wallet;
 import com.sujeongring.domain.currency.enums.CurrencyReason;
 import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
+import com.sujeongring.domain.currency.exception.CurrencyErrorCode;
+import com.sujeongring.domain.currency.exception.CurrencyException;
 import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
 import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
+import com.sujeongring.domain.matching.entity.MatchRequest;
 import com.sujeongring.domain.matching.entity.MatchUsage;
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
 import com.sujeongring.domain.matching.enums.MatchUsageType;
 import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.matching.repository.MatchRecommendationRepository;
+import com.sujeongring.domain.matching.repository.MatchRequestRepository;
 import com.sujeongring.domain.matching.repository.MatchUsageRepository;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.UserStatus;
 import com.sujeongring.domain.user.repository.UserRepository;
+import com.sujeongring.domain.user.repository.BlockRepository;
+import com.sujeongring.domain.user.entity.Block;
+import com.sujeongring.domain.relationship.repository.RelationshipRepository;
+import com.sujeongring.domain.relationship.enums.RelationshipStatus;
+import com.sujeongring.domain.relationship.service.RelationshipSlotService;
 
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +35,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -40,6 +50,11 @@ public class NormalMatchingService {
     private final WalletRepository walletRepository;
     private final CurrencyTransactionRepository currencyTransactionRepository;
     private final MatchUsageRepository matchUsageRepository;
+    private final MatchRequestRepository matchRequestRepository;
+    private final BlockRepository blockRepository;
+    private final RelationshipRepository relationshipRepository;
+    private final MatchingHomeService matchingHomeService;
+    private final RelationshipSlotService relationshipSlotService;
 
     @Transactional
     public MatchRecommendation matchNormal(Long userId) {
@@ -57,6 +72,8 @@ public class NormalMatchingService {
             throw new IllegalStateException("온보딩을 완료해야 매칭할 수 있습니다.");
         }
 
+        relationshipSlotService.validateAvailableSlot(userId);
+
         boolean hasFreeMatch =
                 dailyFreeMatchingService.getStatus(userId)
                         .weeklyMatching().remaining() > 0;
@@ -64,13 +81,13 @@ public class NormalMatchingService {
         Wallet wallet = null;
 
         if (!hasFreeMatch) {
-            wallet = walletRepository.findByUserId(userId)
+            wallet = walletRepository.findByUserIdForUpdate(userId)
                     .orElseThrow(() ->
-                            new IllegalStateException("수정구 지갑이 없습니다.")
+                            new CurrencyException(CurrencyErrorCode.WALLET_NOT_FOUND)
                     );
 
             if (wallet.getBalance() < PAID_MATCH_COST) {
-                throw new IllegalStateException("수정구 잔액이 부족합니다.");
+                throw new CurrencyException(CurrencyErrorCode.INSUFFICIENT_CURRENCY_BALANCE);
             }
         }
 
@@ -81,12 +98,88 @@ public class NormalMatchingService {
                 .map(r -> r.getCandidate().getId())
                 .collect(Collectors.toSet());
 
+        // 내가 차단했거나 나를 차단한 사용자 ID 수집
+        Set<Long> blockedUserIds = blockRepository
+                .findAllByBlockerIdOrBlockedId(userId, userId)
+                .stream()
+                .map(block -> {
+                    Long blockerId = block.getBlocker().getId();
+
+                    if (blockerId.equals(userId)) {
+                        // 내가 상대방을 차단한 경우
+                        return block.getBlocked().getId();
+                    } else {
+                        // 상대방이 나를 차단한 경우
+                        return blockerId;
+                    }
+                })
+                .collect(Collectors.toSet());
+
+
+        // 나와 관계 이력이 있는 사용자(ACTIVE/COMPLETED/ENDED) 제외
+        Set<Long> relationshipExcludedUserIds = relationshipRepository
+                .findAllByUserAIdOrUserBId(userId, userId)
+                .stream()
+                .map(relationship -> {
+                    Long userAId = relationship.getUserA().getId();
+
+                    if (userAId.equals(userId)) {
+                        // 내가 userA라면 상대방은 userB
+                        return relationship.getUserB().getId();
+                    } else {
+                        // 내가 userB라면 상대방은 userA
+                        return userAId;
+                    }
+                })
+                .collect(Collectors.toSet());
+
+        // 나와 PENDING 요청이 있는 사용자 제외 (보낸/받은 요청 모두)
+        Set<Long> pendingRequestUserIds = java.util.stream.Stream.concat(
+                        matchRequestRepository
+                                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.PENDING
+                                )
+                                .stream(),
+                        matchRequestRepository
+                                .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.PENDING
+                                )
+                                .stream()
+                )
+                .map(request -> getCounterpartUserId(request, userId))
+                .collect(Collectors.toSet());
+
+        // 나와 REJECTED 이력이 있는 사용자는 재추천 제외
+        Set<Long> rejectedRequestUserIds = java.util.stream.Stream.concat(
+                        matchRequestRepository
+                                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.REJECTED
+                                )
+                                .stream(),
+                        matchRequestRepository
+                                .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.REJECTED
+                                )
+                                .stream()
+                )
+                .map(request -> getCounterpartUserId(request, userId))
+                .collect(Collectors.toSet());
+
+
         // 매칭 가능 사용자 조회
         List<User> candidates = userRepository.findAll().stream()
                 .filter(user -> !user.getId().equals(userId))
                 .filter(User::isOnboardingCompleted)
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
                 .filter(user -> !previousCandidateIds.contains(user.getId()))
+                .filter(user -> !blockedUserIds.contains(user.getId()))
+                .filter(user -> !relationshipExcludedUserIds.contains(user.getId()))
+                .filter(user -> !pendingRequestUserIds.contains(user.getId()))
+                .filter(user -> !rejectedRequestUserIds.contains(user.getId()))
                 .toList();
 
         if (candidates.isEmpty()) {
@@ -112,6 +205,11 @@ public class NormalMatchingService {
                         ))
                 .orElseThrow();
 
+        String introduction = matchingService.generateMatchingReason(
+                userId,
+                selected.getId()
+        );
+
         MatchRecommendation recommendation =
                 recommendationRepository.save(
                         new MatchRecommendation(
@@ -119,7 +217,8 @@ public class NormalMatchingService {
                                 selected,
                                 MatchingType.NORMAL,
                                 scores.getOrDefault(selected.getId(), 0),
-                                null
+                                null,
+                                introduction
                         )
                 );
 
@@ -154,5 +253,12 @@ public class NormalMatchingService {
         }
 
         return recommendation;
+    }
+
+    private Long getCounterpartUserId(MatchRequest request, Long userId) {
+        if (request.getSender().getId().equals(userId)) {
+            return request.getReceiver().getId();
+        }
+        return request.getSender().getId();
     }
 }

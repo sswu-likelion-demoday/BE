@@ -2,6 +2,8 @@ package com.sujeongring.domain.relationship.entity;
 
 import com.sujeongring.domain.matching.entity.MatchRequest;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
+import com.sujeongring.domain.relationship.exception.RelationshipErrorCode;
+import com.sujeongring.domain.relationship.exception.RelationshipException;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -76,6 +78,24 @@ public class Relationship {
     }
 
     public void end() {
+        if (this.status != RelationshipStatus.ACTIVE) {
+            throw new RelationshipException(RelationshipErrorCode.RELATIONSHIP_NOT_ACTIVE);
+        }
+
+        this.status = RelationshipStatus.ENDED;
+        this.endedAt = LocalDateTime.now();
+    }
+
+    public void endByBlock() {
+        if (this.status == RelationshipStatus.ENDED) {
+            return;
+        }
+
+        if (this.status != RelationshipStatus.ACTIVE
+                && this.status != RelationshipStatus.COMPLETED) {
+            throw new RelationshipException(RelationshipErrorCode.RELATIONSHIP_BLOCK_END_NOT_ALLOWED);
+        }
+
         this.status = RelationshipStatus.ENDED;
         this.endedAt = LocalDateTime.now();
     }

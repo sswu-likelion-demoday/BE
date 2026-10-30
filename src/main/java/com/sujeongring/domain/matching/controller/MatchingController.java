@@ -1,9 +1,11 @@
 package com.sujeongring.domain.matching.controller;
 
 import com.sujeongring.domain.matching.dto.response.DailyFreeMatchingStatusResponse;
+import com.sujeongring.domain.matching.dto.response.MatchingHomeResponse;
 import com.sujeongring.domain.matching.dto.response.NormalMatchingResponse;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
 import com.sujeongring.domain.matching.service.NormalMatching.DailyFreeMatchingService;
+import com.sujeongring.domain.matching.service.NormalMatching.MatchingHomeService;
 import com.sujeongring.domain.matching.service.NormalMatching.NormalMatchingService;
 import com.sujeongring.global.auth.CurrentUserId;
 import com.sujeongring.global.common.ApiResponse;
@@ -20,6 +22,17 @@ public class MatchingController {
 
     private final DailyFreeMatchingService dailyFreeMatchingService;
     private final NormalMatchingService normalMatchingService;
+    private final MatchingHomeService matchingHomeService;
+
+    @GetMapping("/home")
+    public ApiResponse<MatchingHomeResponse> getMatchingHome(
+            @CurrentUserId Long userId
+    ) {
+        return ApiResponse.success(
+                "매칭 홈을 조회하였습니다.",
+                matchingHomeService.getHome(userId)
+        );
+    }
 
     @GetMapping("/status")
     public ApiResponse<DailyFreeMatchingStatusResponse> getMatchingStatus(

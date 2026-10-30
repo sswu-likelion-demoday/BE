@@ -3,6 +3,12 @@ package com.sujeongring.domain.quest.service;
 import com.sujeongring.domain.chat.entity.ChatRoom;
 import com.sujeongring.domain.chat.repository.ChatRoomRepository;
 import com.sujeongring.domain.chat.service.ChatQuestProcessingService;
+import com.sujeongring.domain.currency.entity.CurrencyTransaction;
+import com.sujeongring.domain.currency.entity.Wallet;
+import com.sujeongring.domain.currency.enums.CurrencyReason;
+import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
+import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
+import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.quest.dto.response.AiQuizAnswerResponse;
 import com.sujeongring.domain.quest.dto.response.AiQuizResponse;
 import com.sujeongring.domain.quest.entity.AiQuiz;
@@ -33,11 +39,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AiQuizAnswerService {
 
+    private static final int QUIZ_CORRECT_REWARD = 3;
+    private static final int STAGE_COMPLETE_REWARD = 5;
+
     private final RelationshipQuestRepository relationshipQuestRepository;
     private final AiQuizRepository aiQuizRepository;
     private final QuestProgressService questProgressService;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatQuestProcessingService chatQuestProcessingService;
+    private final WalletRepository walletRepository;
+    private final CurrencyTransactionRepository currencyTransactionRepository;
     private final JsonMapper objectMapper;
 
     @Transactional
@@ -105,8 +116,21 @@ public class AiQuizAnswerService {
             questCompleted = true;
         }
 
+        int reward = 0;
+
+        if (correct) {
+            reward += grantReward(
+                    relationship.getUserA().getId().equals(userId) ? relationship.getUserA() : relationship.getUserB(),
+                    QUIZ_CORRECT_REWARD,
+                    CurrencyReason.QUEST_REWARD
+            );
+        }
+
+        if (questCompleted && completionResult != null && completionResult.stageCompleted()) {
+            reward += STAGE_COMPLETE_REWARD;
+        }
+
         AiQuizResponse.Option correctAnswer = findCorrectAnswer(options, myQuiz.getCorrectOption());
-        int reward = correct ? 5 : 0;
 
         AiQuizAnswerResponse.CompletionInfo completionInfo = null;
         if (questCompleted && completionResult != null) {
@@ -202,5 +226,24 @@ public class AiQuizAnswerService {
             case 4 -> "이름 · 학번 · 학과 · 프로필 사진";
             default -> null;
         };
+    }
+
+    private int grantReward(User user, int amount, CurrencyReason reason) {
+        Wallet wallet = walletRepository.findByUserIdForUpdate(user.getId())
+                .orElseGet(() -> walletRepository.save(new Wallet(user)));
+
+        wallet.earnCurrency(amount);
+
+        currencyTransactionRepository.save(
+                new CurrencyTransaction(
+                        wallet,
+                        CurrencyTransactionType.EARN,
+                        reason,
+                        amount,
+                        wallet.getBalance()
+                )
+        );
+
+        return amount;
     }
 }

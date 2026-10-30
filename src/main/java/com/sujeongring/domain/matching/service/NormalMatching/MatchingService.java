@@ -14,6 +14,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
+//scoreCalculator를 이용한 후보별 유사도 계산
 @Service
 @RequiredArgsConstructor
 public class MatchingService {
@@ -66,4 +68,68 @@ public class MatchingService {
         return entries.stream().collect(Collectors.groupingBy(userId,
                 Collectors.mapping(value, Collectors.toSet())));
     }
+
+
+    @Transactional(readOnly = true)
+    public String generateMatchingReason(
+            Long requesterId,
+            Long candidateId
+    ) {
+        Set<Long> ids = Set.of(requesterId, candidateId);
+
+        // 취미 비교
+        Map<Long, Set<HobbyType>> hobbies = group(
+                hobbyRepository.findAllByUser_IdIn(ids),
+                v -> v.getUser().getId(),
+                UserHobby::getHobby);
+
+        if (!Collections.disjoint(
+                values(hobbies, requesterId),
+                values(hobbies, candidateId)
+        )) {
+            return "같은 취미를 가졌어요";
+        }
+
+        // 관심사 비교
+        Map<Long, Set<InterestType>> interests = group(
+                interestRepository.findAllByUser_IdIn(ids),
+                v -> v.getUser().getId(),
+                UserInterest::getInterest);
+
+        if (!Collections.disjoint(
+                values(interests, requesterId),
+                values(interests, candidateId)
+        )) {
+            return "관심사가 비슷해요";
+        }
+
+        // 선호 친구 유형 비교
+        Map<Long, Set<FriendType>> friends = group(
+                friendTypeRepository.findAllByUser_IdIn(ids),
+                v -> v.getUser().getId(),
+                UserFriendType::getFriendType);
+
+        if (!Collections.disjoint(
+                values(friends, requesterId),
+                values(friends, candidateId)
+        )) {
+            return "원하는 친구 유형이 비슷해요";
+        }
+
+        // 사회적 성향 비교
+        Map<Long, Set<SocialStyleType>> styles = group(
+                socialStyleRepository.findAllByUser_IdIn(ids),
+                v -> v.getUser().getId(),
+                UserSocialStyle::getSocialStyle);
+
+        if (!Collections.disjoint(
+                values(styles, requesterId),
+                values(styles, candidateId)
+        )) {
+            return "소통 스타일이 비슷해요";
+        }
+
+        return "새로운 인연으로 추천드려요";
+    }
+
 }
