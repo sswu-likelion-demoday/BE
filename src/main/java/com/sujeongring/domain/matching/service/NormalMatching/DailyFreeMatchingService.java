@@ -1,6 +1,8 @@
 
 package com.sujeongring.domain.matching.service.NormalMatching;
 
+import com.sujeongring.domain.currency.exception.CurrencyErrorCode;
+import com.sujeongring.domain.currency.exception.CurrencyException;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
 import com.sujeongring.domain.matching.entity.MatchUsage;
 import com.sujeongring.domain.matching.enums.MatchUsageType;
@@ -61,9 +63,7 @@ public class DailyFreeMatchingService {
         // 수정구 지갑 조회
         Wallet wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() ->
-                        new IllegalStateException(
-                                "사용자의 지갑이 존재하지 않습니다."
-                        )
+                        new CurrencyException(CurrencyErrorCode.WALLET_NOT_FOUND)
                 );
 
         int balance = wallet.getBalance();

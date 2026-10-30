@@ -25,6 +25,24 @@ public enum RelationshipErrorCode implements ErrorCode {
             HttpStatus.CONFLICT,
             "RELATIONSHIP_ENDED",
             "종료된 관계입니다."
+    ),
+
+    RELATIONSHIP_NOT_ACTIVE(
+            HttpStatus.CONFLICT,
+            "RELATIONSHIP_NOT_ACTIVE",
+            "현재 활성 상태의 관계만 종료할 수 있습니다."
+    ),
+
+    RELATIONSHIP_BLOCK_END_NOT_ALLOWED(
+            HttpStatus.CONFLICT,
+            "RELATIONSHIP_BLOCK_END_NOT_ALLOWED",
+            "차단을 통한 관계 종료는 ACTIVE 또는 COMPLETED 관계에서만 할 수 있습니다."
+    ),
+
+    MATCH_SLOT_FULL(
+            HttpStatus.CONFLICT,
+            "MATCH_SLOT_FULL",
+            "활성 관계 슬롯이 가득 찼습니다."
     );
 
     private final HttpStatus status;

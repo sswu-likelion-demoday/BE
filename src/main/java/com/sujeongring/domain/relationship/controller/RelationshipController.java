@@ -48,4 +48,14 @@ public class RelationshipController {
                 response
         );
     }
+
+    @PostMapping("/{relationshipId}/end")
+    public ApiResponse<Void> endRelationship(
+            @PathVariable Long relationshipId,
+            @CurrentUserId Long userId
+    ) {
+        relationshipService.endRelationship(relationshipId, userId);
+
+        return ApiResponse.success("관계 종료가 완료되었습니다.", null);
+    }
 }

@@ -1,8 +1,7 @@
 package com.sujeongring.domain.matching.service.NormalMatching;
 
 import com.sujeongring.domain.matching.dto.response.MatchingHomeResponse;
-import com.sujeongring.domain.relationship.enums.RelationshipStatus;
-import com.sujeongring.domain.relationship.repository.RelationshipRepository;
+import com.sujeongring.domain.relationship.service.RelationshipSlotService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,29 +10,24 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MatchingHomeService {
 
-    public static final int TOTAL_SLOTS = 3;
-
-    private final RelationshipRepository relationshipRepository;
+    private final RelationshipSlotService relationshipSlotService;
 
     @Transactional(readOnly = true)
     public MatchingHomeResponse getHome(Long userId) {
 
-        long activeCount =
-                relationshipRepository.countByUserAIdAndStatusOrUserBIdAndStatus(
-                        userId,
-                        RelationshipStatus.ACTIVE,
-                        userId,
-                        RelationshipStatus.ACTIVE
-                );
+        long activeCount = relationshipSlotService.getActiveRelationshipCount(userId);
 
         int used = Math.toIntExact(activeCount);
-        int available = Math.max(0, TOTAL_SLOTS - used);
+        int available = Math.max(
+                0,
+                RelationshipSlotService.MAX_ACTIVE_RELATIONSHIPS - used
+        );
 
         return new MatchingHomeResponse(
                 new MatchingHomeResponse.RelationshipSlots(
                         used,
                         available,
-                        TOTAL_SLOTS
+                        RelationshipSlotService.MAX_ACTIVE_RELATIONSHIPS
                 )
         );
     }
