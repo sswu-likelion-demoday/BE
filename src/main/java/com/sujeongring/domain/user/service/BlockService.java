@@ -48,21 +48,15 @@ public class BlockService {
         Block block = new Block(blocker, target);
         blockRepository.save(block);
 
-        List<Relationship> activeRelationships = relationshipRepository
-                .findAllByStatusAndUserAIdOrStatusAndUserBId(
-                        RelationshipStatus.ACTIVE,
+         List<Relationship> blockableRelationships = relationshipRepository
+                .findPairRelationshipsByStatuses(
                         blockerId,
-                        RelationshipStatus.ACTIVE,
-                        targetUserId
+                        targetUserId,
+                        List.of(RelationshipStatus.ACTIVE, RelationshipStatus.COMPLETED)
                 );
 
-        for (Relationship relationship : activeRelationships) {
-            if ((relationship.getUserA().getId().equals(blockerId)
-                    && relationship.getUserB().getId().equals(targetUserId))
-                    || (relationship.getUserA().getId().equals(targetUserId)
-                    && relationship.getUserB().getId().equals(blockerId))) {
-                relationship.end();
-            }
+        for (Relationship relationship : blockableRelationships) {
+            relationship.endByBlock();
         }
 
         List<MatchRequest> pendingRequests = new java.util.ArrayList<>();

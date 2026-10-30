@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface RelationshipRepository
@@ -45,5 +46,18 @@ public interface RelationshipRepository
             @Param("userAId") Long userAId,
             @Param("userBId") Long userBId,
             @Param("status") RelationshipStatus status
+    );
+
+    @Query("""
+            select r
+            from Relationship r
+            where ((r.userA.id = :userAId and r.userB.id = :userBId)
+                or (r.userA.id = :userBId and r.userB.id = :userAId))
+              and r.status in :statuses
+            """)
+    List<Relationship> findPairRelationshipsByStatuses(
+            @Param("userAId") Long userAId,
+            @Param("userBId") Long userBId,
+            @Param("statuses") Collection<RelationshipStatus> statuses
     );
 }
