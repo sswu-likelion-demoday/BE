@@ -9,10 +9,13 @@ import com.sujeongring.domain.currency.exception.CurrencyException;
 import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
 import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
+import com.sujeongring.domain.matching.entity.MatchRequest;
 import com.sujeongring.domain.matching.entity.MatchUsage;
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
 import com.sujeongring.domain.matching.enums.MatchUsageType;
 import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.matching.repository.MatchRecommendationRepository;
+import com.sujeongring.domain.matching.repository.MatchRequestRepository;
 import com.sujeongring.domain.matching.repository.MatchUsageRepository;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.UserStatus;
@@ -47,6 +50,7 @@ public class NormalMatchingService {
     private final WalletRepository walletRepository;
     private final CurrencyTransactionRepository currencyTransactionRepository;
     private final MatchUsageRepository matchUsageRepository;
+    private final MatchRequestRepository matchRequestRepository;
     private final BlockRepository blockRepository;
     private final RelationshipRepository relationshipRepository;
     private final MatchingHomeService matchingHomeService;
@@ -112,14 +116,9 @@ public class NormalMatchingService {
                 .collect(Collectors.toSet());
 
 
-        // 현재 나와 ACTIVE 관계인 사용자 ID 수집
-        Set<Long> activeRelationshipUserIds = relationshipRepository
-                .findAllByStatusAndUserAIdOrStatusAndUserBId(
-                        RelationshipStatus.ACTIVE,
-                        userId,
-                        RelationshipStatus.ACTIVE,
-                        userId
-                )
+        // 나와 관계 이력이 있는 사용자(ACTIVE/COMPLETED/ENDED) 제외
+        Set<Long> relationshipExcludedUserIds = relationshipRepository
+                .findAllByUserAIdOrUserBId(userId, userId)
                 .stream()
                 .map(relationship -> {
                     Long userAId = relationship.getUserA().getId();
@@ -134,6 +133,42 @@ public class NormalMatchingService {
                 })
                 .collect(Collectors.toSet());
 
+        // 나와 PENDING 요청이 있는 사용자 제외 (보낸/받은 요청 모두)
+        Set<Long> pendingRequestUserIds = java.util.stream.Stream.concat(
+                        matchRequestRepository
+                                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.PENDING
+                                )
+                                .stream(),
+                        matchRequestRepository
+                                .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.PENDING
+                                )
+                                .stream()
+                )
+                .map(request -> getCounterpartUserId(request, userId))
+                .collect(Collectors.toSet());
+
+        // 나와 REJECTED 이력이 있는 사용자는 재추천 제외
+        Set<Long> rejectedRequestUserIds = java.util.stream.Stream.concat(
+                        matchRequestRepository
+                                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.REJECTED
+                                )
+                                .stream(),
+                        matchRequestRepository
+                                .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.REJECTED
+                                )
+                                .stream()
+                )
+                .map(request -> getCounterpartUserId(request, userId))
+                .collect(Collectors.toSet());
+
 
         // 매칭 가능 사용자 조회
         List<User> candidates = userRepository.findAll().stream()
@@ -142,7 +177,9 @@ public class NormalMatchingService {
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
                 .filter(user -> !previousCandidateIds.contains(user.getId()))
                 .filter(user -> !blockedUserIds.contains(user.getId()))
-                .filter(user -> !activeRelationshipUserIds.contains(user.getId()))
+                .filter(user -> !relationshipExcludedUserIds.contains(user.getId()))
+                .filter(user -> !pendingRequestUserIds.contains(user.getId()))
+                .filter(user -> !rejectedRequestUserIds.contains(user.getId()))
                 .toList();
 
         if (candidates.isEmpty()) {
@@ -216,5 +253,12 @@ public class NormalMatchingService {
         }
 
         return recommendation;
+    }
+
+    private Long getCounterpartUserId(MatchRequest request, Long userId) {
+        if (request.getSender().getId().equals(userId)) {
+            return request.getReceiver().getId();
+        }
+        return request.getSender().getId();
     }
 }
