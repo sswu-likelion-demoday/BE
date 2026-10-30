@@ -81,7 +81,7 @@ public class NormalMatchingService {
         Wallet wallet = null;
 
         if (!hasFreeMatch) {
-            wallet = walletRepository.findByUserId(userId)
+            wallet = walletRepository.findByUserIdForUpdate(userId)
                     .orElseThrow(() ->
                             new CurrencyException(CurrencyErrorCode.WALLET_NOT_FOUND)
                     );

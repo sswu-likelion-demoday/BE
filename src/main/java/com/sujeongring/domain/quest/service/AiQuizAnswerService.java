@@ -229,7 +229,7 @@ public class AiQuizAnswerService {
     }
 
     private int grantReward(User user, int amount, CurrencyReason reason) {
-        Wallet wallet = walletRepository.findByUserId(user.getId())
+        Wallet wallet = walletRepository.findByUserIdForUpdate(user.getId())
                 .orElseGet(() -> walletRepository.save(new Wallet(user)));
 
         wallet.earnCurrency(amount);
