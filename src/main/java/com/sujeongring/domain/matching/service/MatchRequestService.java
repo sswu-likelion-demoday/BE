@@ -24,9 +24,14 @@ import com.sujeongring.domain.matching.dto.response.RelationshipSlotsResponse;
 import com.sujeongring.domain.matching.enums.MatchRequestStatus;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestDetailResponse;
 import com.sujeongring.domain.matching.enums.MatchingType;
+import com.sujeongring.domain.matching.dto.response.matchrequest.AcceptMatchRequestResponse;
+import com.sujeongring.domain.relationship.entity.Relationship;
+
 
 import java.time.LocalDateTime;
 import java.util.List;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +48,9 @@ public class MatchRequestService {
     private final BlockRepository blockRepository;
     private final ChatRoomRepository chatRoomRepository;
     private final RelationshipSlotService relationshipSlotService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Transactional
     public CreateMatchRequestResponse create(
@@ -296,4 +304,124 @@ public class MatchRequestService {
     }
 
 
+    //수락 메서드
+
+    @Transactional
+    public AcceptMatchRequestResponse acceptMatchRequest(
+            Long userId,
+            Long requestId
+    ) {
+        MatchRequest request = matchRequestRepository.findById(requestId)
+                .orElseThrow(() -> new BaseException(
+                        MatchRequestErrorCode.MATCH_REQUEST_NOT_FOUND
+                ));
+
+        // 요청 수신자만 수락 가능
+        if (!request.getReceiver().getId().equals(userId)) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_ACCESS_DENIED
+            );
+        }
+
+        Long senderId = request.getSender().getId();
+        Long receiverId = request.getReceiver().getId();
+
+        // 양쪽 사용자 행을 ID 오름차순으로 잠금
+        Long firstId = Math.min(senderId, receiverId);
+        Long secondId = Math.max(senderId, receiverId);
+
+        userRepository.findByIdForUpdate(firstId)
+                .orElseThrow(() ->
+                        new BaseException(CommonErrorCode.NOT_FOUND));
+
+        userRepository.findByIdForUpdate(secondId)
+                .orElseThrow(() ->
+                        new BaseException(CommonErrorCode.NOT_FOUND));
+
+        // 잠금 이후 요청 상태 재조회
+        // 기존 findById()는 영속성 컨텍스트의
+        // 캐시를 반환할 수 있으므로 refresh 필요
+        entityManager.refresh(request);
+
+        if (request.getStatus() != MatchRequestStatus.PENDING) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_INVALID_STATUS
+            );
+        }
+
+        if (!request.getExpiresAt().isAfter(LocalDateTime.now())) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_EXPIRED
+            );
+        }
+
+        //  양쪽 관계 슬롯 재검사
+        relationshipSlotService.validateAvailableSlot(receiverId);
+        relationshipSlotService.validateAvailableSlot(senderId);
+
+        //기존 ACTIVE 관계 중복 방지
+        if (relationshipSlotService.existsActiveRelationshipBetween(
+                senderId, receiverId)) {
+            throw new BaseException(
+                    MatchRequestErrorCode.ACTIVE_RELATIONSHIP_EXISTS
+            );
+        }
+        request.accept();
+
+        //관계 생성
+        Relationship relationship = relationshipRepository.save(
+                new Relationship(
+                        request.getSender(),
+                        request.getReceiver(),
+                        request
+                )
+        );
+
+        // 채팅방 생성
+        ChatRoom chatRoom = chatRoomRepository.save(
+                new ChatRoom(relationship)
+        );
+
+        return new AcceptMatchRequestResponse(
+                request.getId(),
+                relationship.getId(),
+                chatRoom.getId()
+        );
+    }
+
+
+    //거절 메서드
+    @jakarta.transaction.Transactional
+    public void rejectMatchRequest(Long userId, Long requestId) {
+
+        //요청 조회 및 잠금
+        MatchRequest request = matchRequestRepository
+                .findByIdForUpdate(requestId)
+                .orElseThrow(() -> new BaseException(
+                        MatchRequestErrorCode.MATCH_REQUEST_NOT_FOUND
+                ));
+
+        // PENDING 상태인지 확인
+        if (request.getStatus() != MatchRequestStatus.PENDING) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_INVALID_STATUS
+            );
+        }
+
+        //요청 수신자 본인인지 확인
+        if (!request.getReceiver().getId().equals(userId)) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_ACCESS_DENIED
+            );
+        }
+
+        // 만료 여부 확인
+        if (!request.getExpiresAt().isAfter(LocalDateTime.now())) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_EXPIRED
+            );
+        }
+
+        request.reject();
+    }
 }

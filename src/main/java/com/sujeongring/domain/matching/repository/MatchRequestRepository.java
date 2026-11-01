@@ -2,12 +2,15 @@ package com.sujeongring.domain.matching.repository;
 
 import com.sujeongring.domain.matching.entity.MatchRequest;
 import com.sujeongring.domain.matching.enums.MatchRequestStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface MatchRequestRepository
         extends JpaRepository<MatchRequest, Long> {
@@ -74,5 +77,16 @@ public interface MatchRequestRepository
             @Param("accepted") MatchRequestStatus accepted,
             @Param("now") LocalDateTime now,
             @Param("acceptedCutoff") LocalDateTime acceptedCutoff
+    );
+
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT mr
+    FROM MatchRequest mr
+    WHERE mr.id = :requestId
+    """)
+    Optional<MatchRequest> findByIdForUpdate(
+            @Param("requestId") Long requestId
     );
 }

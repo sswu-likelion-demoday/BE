@@ -2,9 +2,13 @@
 package com.sujeongring.domain.matching.controller;
 
 import com.sujeongring.domain.matching.dto.request.CreateMatchRequestRequest;
+import com.sujeongring.domain.matching.dto.response.matchrequest.AcceptMatchRequestResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.CreateMatchRequestResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestDetailResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestListResponse;
+import com.sujeongring.domain.matching.entity.MatchRequest;
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
+import com.sujeongring.domain.matching.exception.MatchRequestErrorCode;
 import com.sujeongring.domain.matching.service.MatchRequestService;
 import com.sujeongring.global.auth.CurrentUserId;
 import com.sujeongring.global.common.ApiResponse;
@@ -12,6 +16,7 @@ import com.sujeongring.global.common.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+
 
 @RestController
 @RequiredArgsConstructor
@@ -59,4 +64,28 @@ public class MatchRequestController {
         );
     }
 
+
+    @PostMapping("/{requestId}/accept")
+    public ApiResponse<AcceptMatchRequestResponse> acceptMatchRequest(
+            @CurrentUserId Long userId,
+            @PathVariable Long requestId
+    ) {
+        return ApiResponse.success(
+                "채팅 요청을 수락하였습니다.",
+                matchRequestService.acceptMatchRequest(userId, requestId)
+        );
+    }
+
+    @PatchMapping("/{requestId}/reject")
+    public ApiResponse<Void> rejectMatchRequest(
+            @CurrentUserId Long userId,
+            @PathVariable Long requestId
+    ) {
+        matchRequestService.rejectMatchRequest(userId, requestId);
+
+        return ApiResponse.success(
+                "알아보기 요청을 거절하였습니다.",
+                null
+        );
+    }
 }
