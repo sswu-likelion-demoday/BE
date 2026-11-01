@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -112,6 +113,12 @@ public class CategoryMatchService {
             throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_INVALID_CONDITION);
         }
 
+        if (request.conditions() == null
+                || request.conditions().admissionYearMin() == null
+                || request.conditions().admissionYearMax() == null) {
+            throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_INVALID_CONDITION);
+        }
+
         boolean hasActiveRequest = categoryMatchRequestRepository.existsActiveRequestByUserAndCategory(
                 userId,
                 request.category(),
@@ -174,7 +181,7 @@ public class CategoryMatchService {
                     User matchedUser = groupMember.getRequest().getUser();
                     return new CategoryMatchResultResponse.Member(
                             matchedUser.getId(),
-                            matchedUser.getNickname(),
+                            matchedUser.getName(),
                             matchedUser.getDepartmentName(),
                             extractAdmissionYear(matchedUser.getStudentNumber()),
                             matchedUser.getProfileImageUrl(),
@@ -208,11 +215,19 @@ public class CategoryMatchService {
         request.confirmResult();
     }
 
+    @Transactional
+    public void retryWaitingMatches() {
+        for (CategoryType categoryType : CategoryType.values()) {
+            tryMatch(categoryType);
+        }
+    }
+
     private void tryMatch(CategoryType categoryType) {
         List<CategoryMatchRequest> waitingRequests = categoryMatchRequestRepository
                 .findAllByCategoryAndStatusOrderByCreatedAtAsc(categoryType, CategoryMatchStatus.WAITING);
 
         Set<Long> processedRequestIds = new HashSet<>();
+        LocalDateTime now = LocalDateTime.now();
 
         for (CategoryMatchRequest seed : waitingRequests) {
             if (processedRequestIds.contains(seed.getId())) {
@@ -233,22 +248,24 @@ public class CategoryMatchService {
                 if (needed == 0) {
                     break;
                 }
-                if (hasBlockedUserInGroup(selected, candidate)) {
+                if (!isCompatibleWithGroup(selected, candidate)) {
                     continue;
                 }
                 selected.add(candidate);
                 needed--;
             }
 
-            if (selected.size() < seed.getMemberCount()) {
-                if (!(seed.isAllowPartialMatch() && selected.size() >= 2)) {
-                    continue;
-                }
+            int groupSize = selected.size();
+            if (groupSize < 2) {
+                continue;
             }
 
-            int groupSize = selected.size();
+            if (groupSize < seed.getMemberCount() && !isPartialMatchEligible(seed, groupSize, now)) {
+                continue;
+            }
+
             boolean acceptedByAll = selected.stream()
-                    .allMatch(request -> request.isAllowPartialMatch() || request.getMemberCount() == groupSize);
+                    .allMatch(request -> acceptsGroupSize(request, groupSize, now));
 
             if (!acceptedByAll) {
                 continue;
@@ -280,22 +297,44 @@ public class CategoryMatchService {
             return false;
         }
 
-        if (seed.isAllowPartialMatch() || candidate.isAllowPartialMatch()) {
-            return true;
-        }
-
-        return seed.getMemberCount() == candidate.getMemberCount();
+        return true;
     }
 
-    private boolean hasBlockedUserInGroup(
+    private boolean isCompatibleWithGroup(
             List<CategoryMatchRequest> selected,
             CategoryMatchRequest candidate
     ) {
-        Long candidateUserId = candidate.getUser().getId();
-
         return selected.stream()
-                .map(request -> request.getUser().getId())
-                .anyMatch(selectedUserId -> isBlockedBetween(selectedUserId, candidateUserId));
+                .allMatch(request -> canBeGrouped(request, candidate));
+    }
+
+    private boolean acceptsGroupSize(
+            CategoryMatchRequest request,
+            int groupSize,
+            LocalDateTime now
+    ) {
+        if (groupSize > request.getMemberCount()) {
+            return false;
+        }
+
+        if (groupSize == request.getMemberCount()) {
+            return true;
+        }
+
+        return isPartialMatchEligible(request, groupSize, now);
+    }
+
+    private boolean isPartialMatchEligible(
+            CategoryMatchRequest request,
+            int groupSize,
+            LocalDateTime now
+    ) {
+        if (!request.isAllowPartialMatch() || groupSize < 2) {
+            return false;
+        }
+
+        LocalDateTime createdAt = request.getCreatedAt();
+        return createdAt != null && !createdAt.plusHours(24).isAfter(now);
     }
 
     private boolean isBlockedBetween(Long userAId, Long userBId) {
@@ -322,7 +361,7 @@ public class CategoryMatchService {
             return true;
         }
 
-        Integer admissionYear = extractFullAdmissionYear(user.getStudentNumber());
+        Integer admissionYear = extractAdmissionYear(user.getStudentNumber());
 
         if (conditions.admissionYearMin() != null
                 && (admissionYear == null || admissionYear < conditions.admissionYearMin())) {
@@ -379,15 +418,17 @@ public class CategoryMatchService {
     }
 
     private Integer extractAdmissionYear(String studentNumber) {
-        if (studentNumber == null || studentNumber.length() < 2) {
+        if (studentNumber == null || studentNumber.length() < 4) {
             return null;
         }
 
-        String firstTwo = studentNumber.substring(0, 2);
-        if (!firstTwo.matches("\\d{2}")) {
+        String year = studentNumber.substring(2, 4);
+
+        if (!year.matches("\\d{2}")) {
             return null;
         }
-        return Integer.parseInt(firstTwo);
+
+        return Integer.parseInt(year);
     }
 
     private Integer extractFullAdmissionYear(String studentNumber) {

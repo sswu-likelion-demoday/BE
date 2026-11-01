@@ -15,7 +15,7 @@ public record CategoryMatchResultResponse(
 ) {
     public record Member(
             Long userId,
-            String nickname,
+            String name,
             String departmentName,
             Integer admissionYear,
             String profileImageUrl,
