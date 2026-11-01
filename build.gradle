@@ -16,6 +16,9 @@ java {
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://jitpack.io")
+    }
 }
 
 dependencies {
@@ -30,6 +33,7 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     implementation 'org.springframework.boot:spring-boot-starter-websocket'
     implementation 'com.openai:openai-java:4.76.0'
+    implementation 'com.github.usingsky:KoreanLunarCalendar:0.4.0'
 
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'

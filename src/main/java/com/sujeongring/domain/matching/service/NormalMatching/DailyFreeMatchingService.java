@@ -53,14 +53,12 @@ public class DailyFreeMatchingService {
                 WEEKLY_FREE_LIMIT - used
         );
 
-        // 무료 매칭 상태
         DailyFreeMatchingStatusResponse.WeeklyMatching weeklyMatching =
                 new DailyFreeMatchingStatusResponse.WeeklyMatching(
                         remaining,
                         WEEKLY_FREE_LIMIT
                 );
 
-        // 수정구 지갑 조회
         Wallet wallet = walletRepository.findByUserId(userId)
                 .orElseThrow(() ->
                         new CurrencyException(CurrencyErrorCode.WALLET_NOT_FOUND)
@@ -68,14 +66,12 @@ public class DailyFreeMatchingService {
 
         int balance = wallet.getBalance();
 
-        // 수정구 잔액 및 매칭 비용
         DailyFreeMatchingStatusResponse.Currency currency =
                 new DailyFreeMatchingStatusResponse.Currency(
                         balance,
                         PAID_MATCH_COST
                 );
 
-        // 무료 횟수가 남아 있으면 FREE, 없으면 CURRENCY
         String actionType = remaining > 0 ? "FREE" : "CURRENCY";
 
         return new DailyFreeMatchingStatusResponse(
