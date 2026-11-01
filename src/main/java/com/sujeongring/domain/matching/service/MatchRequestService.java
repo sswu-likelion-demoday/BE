@@ -2,6 +2,7 @@
 package com.sujeongring.domain.matching.service;
 
 import com.sujeongring.domain.chat.repository.ChatRoomRepository;
+import com.sujeongring.domain.chat.repository.ChatReadStatusRepository;
 import com.sujeongring.domain.matching.dto.response.matchrequest.CreateMatchRequestResponse;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
 import com.sujeongring.domain.matching.entity.MatchRequest;
@@ -17,6 +18,7 @@ import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.global.error.CommonErrorCode;
 import com.sujeongring.global.error.exception.BaseException;
 import com.sujeongring.domain.chat.entity.ChatRoom;
+import com.sujeongring.domain.chat.entity.ChatReadStatus;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestItemResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestListResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestUserResponse;
@@ -26,6 +28,7 @@ import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestDet
 import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.matching.dto.response.matchrequest.AcceptMatchRequestResponse;
 import com.sujeongring.domain.relationship.entity.Relationship;
+import com.sujeongring.domain.quest.service.QuestInitializationService;
 
 
 import java.time.LocalDateTime;
@@ -47,6 +50,8 @@ public class MatchRequestService {
     private final RelationshipRepository relationshipRepository;
     private final BlockRepository blockRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatReadStatusRepository chatReadStatusRepository;
+    private final QuestInitializationService questInitializationService;
     private final RelationshipSlotService relationshipSlotService;
 
     @PersistenceContext
@@ -355,6 +360,16 @@ public class MatchRequestService {
             );
         }
 
+        boolean blocked =
+                blockRepository.existsByBlockerIdAndBlockedId(senderId, receiverId)
+                        || blockRepository.existsByBlockerIdAndBlockedId(receiverId, senderId);
+
+        if (blocked) {
+            throw new BaseException(
+                    MatchRequestErrorCode.BLOCKED_USER
+            );
+        }
+
         //  양쪽 관계 슬롯 재검사
         relationshipSlotService.validateAvailableSlot(receiverId);
         relationshipSlotService.validateAvailableSlot(senderId);
@@ -381,6 +396,15 @@ public class MatchRequestService {
         ChatRoom chatRoom = chatRoomRepository.save(
                 new ChatRoom(relationship)
         );
+
+        chatReadStatusRepository.saveAll(
+                List.of(
+                        new ChatReadStatus(chatRoom, relationship.getUserA()),
+                        new ChatReadStatus(chatRoom, relationship.getUserB())
+                )
+        );
+
+        questInitializationService.initializeQuests(relationship);
 
         return new AcceptMatchRequestResponse(
                 request.getId(),
