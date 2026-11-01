@@ -55,6 +55,17 @@ public enum MatchRequestErrorCode implements ErrorCode {
             HttpStatus.FORBIDDEN,
             "MATCH_REQUEST_403_3",
             "해당 채팅 요청을 조회할 권한이 없습니다."
+    ),
+    MATCH_REQUEST_INVALID_STATUS(
+            HttpStatus.CONFLICT,
+            "MATCH_REQUEST_409_3",
+            "대기 중인 채팅 요청만 처리할 수 있습니다."
+    ),
+
+    MATCH_REQUEST_EXPIRED(
+            HttpStatus.CONFLICT,
+            "MATCH_REQUEST_409_4",
+            "만료된 채팅 요청입니다."
     );
 
     private final HttpStatus status;
