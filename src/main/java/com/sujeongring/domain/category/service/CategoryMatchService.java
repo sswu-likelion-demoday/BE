@@ -4,7 +4,6 @@ import com.sujeongring.domain.category.dto.request.CategoryMatchCreateRequest;
 import com.sujeongring.domain.category.dto.response.CategoryMatchCreateResponse;
 import com.sujeongring.domain.category.dto.response.CategoryMatchResultResponse;
 import com.sujeongring.domain.category.dto.response.CategoryMatchStatusResponse;
-import com.sujeongring.domain.category.entity.CategoryMatchGroup;
 import com.sujeongring.domain.category.entity.CategoryMatchMember;
 import com.sujeongring.domain.category.entity.CategoryMatchRequest;
 import com.sujeongring.domain.category.enums.CategoryMatchState;
@@ -12,37 +11,37 @@ import com.sujeongring.domain.category.enums.CategoryMatchStatus;
 import com.sujeongring.domain.category.enums.CategoryType;
 import com.sujeongring.domain.category.exception.CategoryMatchErrorCode;
 import com.sujeongring.domain.category.exception.CategoryMatchException;
-import com.sujeongring.domain.category.repository.CategoryMatchGroupRepository;
 import com.sujeongring.domain.category.repository.CategoryMatchMemberRepository;
 import com.sujeongring.domain.category.repository.CategoryMatchRequestRepository;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.MbtiType;
-import com.sujeongring.domain.user.repository.BlockRepository;
 import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.CommonErrorCode;
 import com.sujeongring.global.error.exception.BaseException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CategoryMatchService {
 
     private final UserRepository userRepository;
-    private final BlockRepository blockRepository;
     private final CategoryMatchRequestRepository categoryMatchRequestRepository;
-    private final CategoryMatchGroupRepository categoryMatchGroupRepository;
     private final CategoryMatchMemberRepository categoryMatchMemberRepository;
+    private final CategoryMatchProcessor categoryMatchProcessor;
     private final ObjectMapper objectMapper;
+    private final TransactionTemplate transactionTemplate;
 
     @Transactional(readOnly = true)
     public CategoryMatchStatusResponse getStatus(Long userId) {
@@ -94,18 +93,10 @@ public class CategoryMatchService {
         return new CategoryMatchStatusResponse(categories);
     }
 
-    @Transactional
     public CategoryMatchCreateResponse create(
             Long userId,
             CategoryMatchCreateRequest request
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BaseException(CommonErrorCode.NOT_FOUND));
-
-        if (user.getContact() == null || user.getContact().isBlank()) {
-            throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_CONTACT_REQUIRED);
-        }
-
         if (request.conditions() != null
                 && request.conditions().admissionYearMin() != null
                 && request.conditions().admissionYearMax() != null
@@ -119,33 +110,54 @@ public class CategoryMatchService {
             throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_INVALID_CONDITION);
         }
 
-        boolean hasActiveRequest = categoryMatchRequestRepository.existsActiveRequestByUserAndCategory(
-                userId,
-                request.category(),
-                CategoryMatchStatus.WAITING,
-                CategoryMatchStatus.MATCHED
-        );
-
-        if (hasActiveRequest) {
-            throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_ALREADY_ACTIVE);
-        }
-
         String conditionsJson = toConditionsJson(request.conditions());
 
-        CategoryMatchRequest saved = categoryMatchRequestRepository.save(
-                new CategoryMatchRequest(
-                        user,
-                        request.category(),
-                        request.memberCount(),
-                        null,
-                        conditionsJson,
-                        request.allowPartialMatch()
-                )
-        );
+        Long savedRequestId = transactionTemplate.execute(status -> {
+            User user = userRepository.findByIdForUpdate(userId)
+                    .orElseThrow(() -> new BaseException(CommonErrorCode.NOT_FOUND));
 
-        tryMatch(request.category());
+            if (user.getContact() == null || user.getContact().isBlank()) {
+                throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_CONTACT_REQUIRED);
+            }
 
-        CategoryMatchRequest latest = categoryMatchRequestRepository.findById(saved.getId())
+            boolean hasActiveRequest = categoryMatchRequestRepository.existsActiveRequestByUserAndCategory(
+                    userId,
+                    request.category(),
+                    CategoryMatchStatus.WAITING,
+                    CategoryMatchStatus.MATCHED
+            );
+
+            if (hasActiveRequest) {
+                throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_ALREADY_ACTIVE);
+            }
+
+            CategoryMatchRequest saved = categoryMatchRequestRepository.save(
+                    new CategoryMatchRequest(
+                            user,
+                            request.category(),
+                            request.memberCount(),
+                            null,
+                            conditionsJson,
+                            request.allowPartialMatch()
+                    )
+            );
+
+            return saved.getId();
+        });
+
+        if (savedRequestId == null) {
+            throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_REQUEST_NOT_FOUND);
+        }
+
+        try {
+            categoryMatchProcessor.tryMatch(request.category());
+        } catch (DataIntegrityViolationException
+                 | PessimisticLockingFailureException e) {
+            log.warn("category match deferred by concurrent update. category={}, requestId={}",
+                    request.category(), savedRequestId, e);
+        }
+
+        CategoryMatchRequest latest = categoryMatchRequestRepository.findById(savedRequestId)
                 .orElseThrow(() -> new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_REQUEST_NOT_FOUND));
 
         return new CategoryMatchCreateResponse(
@@ -215,175 +227,10 @@ public class CategoryMatchService {
         request.confirmResult();
     }
 
-    @Transactional
     public void retryWaitingMatches() {
         for (CategoryType categoryType : CategoryType.values()) {
-            tryMatch(categoryType);
+            categoryMatchProcessor.tryMatch(categoryType);
         }
-    }
-
-    private void tryMatch(CategoryType categoryType) {
-        List<CategoryMatchRequest> waitingRequests = categoryMatchRequestRepository
-                .findAllByCategoryAndStatusOrderByCreatedAtAsc(categoryType, CategoryMatchStatus.WAITING);
-
-        Set<Long> processedRequestIds = new HashSet<>();
-        LocalDateTime now = LocalDateTime.now();
-
-        for (CategoryMatchRequest seed : waitingRequests) {
-            if (processedRequestIds.contains(seed.getId())) {
-                continue;
-            }
-
-            List<CategoryMatchRequest> candidates = waitingRequests.stream()
-                    .filter(candidate -> !candidate.getId().equals(seed.getId()))
-                    .filter(candidate -> !processedRequestIds.contains(candidate.getId()))
-                    .filter(candidate -> canBeGrouped(seed, candidate))
-                    .toList();
-
-            List<CategoryMatchRequest> selected = new ArrayList<>();
-            selected.add(seed);
-
-            int needed = seed.getMemberCount() - 1;
-            for (CategoryMatchRequest candidate : candidates) {
-                if (needed == 0) {
-                    break;
-                }
-                if (!isCompatibleWithGroup(selected, candidate)) {
-                    continue;
-                }
-                selected.add(candidate);
-                needed--;
-            }
-
-            int groupSize = selected.size();
-            if (groupSize < 2) {
-                continue;
-            }
-
-            if (groupSize < seed.getMemberCount() && !isPartialMatchEligible(seed, groupSize, now)) {
-                continue;
-            }
-
-            boolean acceptedByAll = selected.stream()
-                    .allMatch(request -> acceptsGroupSize(request, groupSize, now));
-
-            if (!acceptedByAll) {
-                continue;
-            }
-
-            CategoryMatchGroup group = categoryMatchGroupRepository.save(
-                    new CategoryMatchGroup(categoryType)
-            );
-
-            for (CategoryMatchRequest request : selected) {
-                request.match();
-                categoryMatchMemberRepository.save(
-                        new CategoryMatchMember(group, request)
-                );
-                processedRequestIds.add(request.getId());
-            }
-        }
-    }
-
-    private boolean canBeGrouped(
-            CategoryMatchRequest seed,
-            CategoryMatchRequest candidate
-    ) {
-        if (isBlockedBetween(seed.getUser().getId(), candidate.getUser().getId())) {
-            return false;
-        }
-
-        if (!isMutuallyCompatible(seed, candidate)) {
-            return false;
-        }
-
-        return true;
-    }
-
-    private boolean isCompatibleWithGroup(
-            List<CategoryMatchRequest> selected,
-            CategoryMatchRequest candidate
-    ) {
-        return selected.stream()
-                .allMatch(request -> canBeGrouped(request, candidate));
-    }
-
-    private boolean acceptsGroupSize(
-            CategoryMatchRequest request,
-            int groupSize,
-            LocalDateTime now
-    ) {
-        if (groupSize > request.getMemberCount()) {
-            return false;
-        }
-
-        if (groupSize == request.getMemberCount()) {
-            return true;
-        }
-
-        return isPartialMatchEligible(request, groupSize, now);
-    }
-
-    private boolean isPartialMatchEligible(
-            CategoryMatchRequest request,
-            int groupSize,
-            LocalDateTime now
-    ) {
-        if (!request.isAllowPartialMatch() || groupSize < 2) {
-            return false;
-        }
-
-        LocalDateTime createdAt = request.getCreatedAt();
-        return createdAt != null && !createdAt.plusHours(24).isAfter(now);
-    }
-
-    private boolean isBlockedBetween(Long userAId, Long userBId) {
-        return blockRepository.existsByBlockerIdAndBlockedId(userAId, userBId)
-                || blockRepository.existsByBlockerIdAndBlockedId(userBId, userAId);
-    }
-
-    private boolean isMutuallyCompatible(
-            CategoryMatchRequest first,
-            CategoryMatchRequest second
-    ) {
-        MatchConditions firstConditions = fromConditionsJson(first.getConditions());
-        MatchConditions secondConditions = fromConditionsJson(second.getConditions());
-
-        return isUserCompatible(second.getUser(), firstConditions)
-                && isUserCompatible(first.getUser(), secondConditions);
-    }
-
-    private boolean isUserCompatible(
-            User user,
-            MatchConditions conditions
-    ) {
-        if (conditions == null) {
-            return true;
-        }
-
-        Integer admissionYear = extractAdmissionYear(user.getStudentNumber());
-
-        if (conditions.admissionYearMin() != null
-                && (admissionYear == null || admissionYear < conditions.admissionYearMin())) {
-            return false;
-        }
-
-        if (conditions.admissionYearMax() != null
-                && (admissionYear == null || admissionYear > conditions.admissionYearMax())) {
-            return false;
-        }
-
-        if (conditions.department() != null
-                && !conditions.department().isBlank()
-                && !conditions.department().equals(user.getDepartmentName())) {
-            return false;
-        }
-
-        if (conditions.mbti() != null && conditions.mbti() != user.getMbti()) {
-            return false;
-        }
-
-        return true;
     }
 
     private String toConditionsJson(CategoryMatchCreateRequest.Conditions conditions) {
@@ -405,18 +252,6 @@ public class CategoryMatchService {
         }
     }
 
-    private MatchConditions fromConditionsJson(String conditionsJson) {
-        if (conditionsJson == null || conditionsJson.isBlank()) {
-            return null;
-        }
-
-        try {
-            return objectMapper.readValue(conditionsJson, MatchConditions.class);
-        } catch (JacksonException e) {
-            throw new CategoryMatchException(CategoryMatchErrorCode.CATEGORY_MATCH_INVALID_CONDITION);
-        }
-    }
-
     private Integer extractAdmissionYear(String studentNumber) {
         if (studentNumber == null || studentNumber.length() < 4) {
             return null;
@@ -429,14 +264,6 @@ public class CategoryMatchService {
         }
 
         return Integer.parseInt(year);
-    }
-
-    private Integer extractFullAdmissionYear(String studentNumber) {
-        Integer shortYear = extractAdmissionYear(studentNumber);
-        if (shortYear == null) {
-            return null;
-        }
-        return 2000 + shortYear;
     }
 
     private record MatchConditions(

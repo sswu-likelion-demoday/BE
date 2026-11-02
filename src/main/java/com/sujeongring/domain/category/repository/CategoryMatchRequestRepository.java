@@ -3,6 +3,8 @@ package com.sujeongring.domain.category.repository;
 import com.sujeongring.domain.category.entity.CategoryMatchRequest;
 import com.sujeongring.domain.category.enums.CategoryMatchStatus;
 import com.sujeongring.domain.category.enums.CategoryType;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,6 +24,19 @@ public interface CategoryMatchRequestRepository extends JpaRepository<CategoryMa
     List<CategoryMatchRequest> findAllByCategoryAndStatusOrderByCreatedAtAsc(
             CategoryType category,
             CategoryMatchStatus status
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select cmr
+            from CategoryMatchRequest cmr
+            where cmr.category = :category
+              and cmr.status = :status
+            order by cmr.createdAt asc
+            """)
+    List<CategoryMatchRequest> findAllByCategoryAndStatusOrderByCreatedAtAscForUpdate(
+            @Param("category") CategoryType category,
+            @Param("status") CategoryMatchStatus status
     );
 
     @Query("""
