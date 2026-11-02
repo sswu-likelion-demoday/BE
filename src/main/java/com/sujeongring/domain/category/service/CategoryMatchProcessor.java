@@ -52,53 +52,55 @@ public class CategoryMatchProcessor {
                 continue;
             }
 
-            List<CategoryMatchRequest> candidates = waitingRequests.stream()
-                    .filter(candidate -> !candidate.getId().equals(seed.getId()))
-                    .filter(candidate -> !processedRequestIds.contains(candidate.getId()))
-                    .filter(candidate -> canBeGrouped(seed, candidate))
-                    .toList();
-
-            List<CategoryMatchRequest> selected = new ArrayList<>();
-            selected.add(seed);
-
-            int needed = seed.getMemberCount() - 1;
-            for (CategoryMatchRequest candidate : candidates) {
-                if (needed == 0) {
-                    break;
-                }
-                if (!isCompatibleWithGroup(selected, candidate)) {
+            for (int targetGroupSize = seed.getMemberCount(); targetGroupSize >= 2; targetGroupSize--) {
+                if (!acceptsGroupSize(seed, targetGroupSize, now)) {
                     continue;
                 }
-                selected.add(candidate);
-                needed--;
-            }
 
-            int groupSize = selected.size();
-            if (groupSize < 2) {
-                continue;
-            }
+                List<CategoryMatchRequest> selected = new ArrayList<>();
+                selected.add(seed);
 
-            if (groupSize < seed.getMemberCount() && !isPartialMatchEligible(seed, groupSize, now)) {
-                continue;
-            }
+                for (CategoryMatchRequest candidate : waitingRequests) {
+                    if (selected.size() == targetGroupSize) {
+                        break;
+                    }
 
-            boolean acceptedByAll = selected.stream()
-                    .allMatch(request -> acceptsGroupSize(request, groupSize, now));
+                    if (candidate.getId().equals(seed.getId())) {
+                        continue;
+                    }
 
-            if (!acceptedByAll) {
-                continue;
-            }
+                    if (processedRequestIds.contains(candidate.getId())) {
+                        continue;
+                    }
 
-            CategoryMatchGroup group = categoryMatchGroupRepository.save(
-                    new CategoryMatchGroup(categoryType)
-            );
+                    if (!acceptsGroupSize(candidate, targetGroupSize, now)) {
+                        continue;
+                    }
 
-            for (CategoryMatchRequest request : selected) {
-                request.match();
-                categoryMatchMemberRepository.save(
-                        new CategoryMatchMember(group, request)
+                    if (!isCompatibleWithGroup(selected, candidate)) {
+                        continue;
+                    }
+
+                    selected.add(candidate);
+                }
+
+                if (selected.size() < targetGroupSize) {
+                    continue;
+                }
+
+                CategoryMatchGroup group = categoryMatchGroupRepository.save(
+                        new CategoryMatchGroup(categoryType)
                 );
-                processedRequestIds.add(request.getId());
+
+                for (CategoryMatchRequest request : selected) {
+                    request.match();
+                    categoryMatchMemberRepository.save(
+                            new CategoryMatchMember(group, request)
+                    );
+                    processedRequestIds.add(request.getId());
+                }
+
+                break;
             }
         }
     }
