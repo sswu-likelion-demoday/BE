@@ -165,6 +165,8 @@ public class QuestInitializationService {
                         )
                 );
 
+        validateFixedQuestIsLast(pool, quizQuest);
+
         List<Quest> candidates = new ArrayList<>(
                 pool.stream()
                         .filter(quest ->
@@ -225,6 +227,8 @@ public class QuestInitializationService {
                         )
                 );
 
+        validateFixedQuestIsLast(quests, meetingVerificationQuest);
+
         List<Quest> stage4Others = quests.stream()
                 .filter(quest -> !quest.getId().equals(meetingVerificationQuest.getId()))
                 .toList();
@@ -246,6 +250,22 @@ public class QuestInitializationService {
                     QuestErrorCode.QUEST_CANDIDATE_NOT_ENOUGH,
                     stage
                             + "단계 퀘스트 후보가 부족합니다."
+            );
+        }
+    }
+
+    private void validateFixedQuestIsLast(
+            List<Quest> quests,
+            Quest fixedQuest
+    ) {
+        boolean hasLaterQuest = quests.stream()
+                .filter(quest -> !quest.getId().equals(fixedQuest.getId()))
+                .anyMatch(quest -> quest.getQuestOrder() >= fixedQuest.getQuestOrder());
+
+        if (hasLaterQuest) {
+            throw new QuestException(
+                    QuestErrorCode.QUEST_INVALID_ORDER,
+                    "고정 퀘스트는 해당 단계의 마지막 순서여야 합니다."
             );
         }
     }

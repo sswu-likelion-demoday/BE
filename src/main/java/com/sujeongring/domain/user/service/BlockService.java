@@ -35,11 +35,17 @@ public class BlockService {
             throw new BaseException(UserErrorCode.BLOCK_SELF_NOT_ALLOWED);
         }
 
-        User blocker = userRepository.findById(blockerId)
+        Long firstId = Math.min(blockerId, targetUserId);
+        Long secondId = Math.max(blockerId, targetUserId);
+
+        User firstUser = userRepository.findByIdForUpdate(firstId)
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
 
-        User target = userRepository.findById(targetUserId)
+        User secondUser = userRepository.findByIdForUpdate(secondId)
                 .orElseThrow(() -> new BaseException(UserErrorCode.USER_NOT_FOUND));
+
+        User blocker = blockerId.equals(firstId) ? firstUser : secondUser;
+        User target = targetUserId.equals(firstId) ? firstUser : secondUser;
 
         if (blockRepository.existsByBlockerIdAndBlockedId(blockerId, targetUserId)) {
             throw new BaseException(UserErrorCode.BLOCK_ALREADY_EXISTS);

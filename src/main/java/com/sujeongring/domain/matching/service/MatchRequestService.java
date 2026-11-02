@@ -33,8 +33,6 @@ import com.sujeongring.domain.quest.service.QuestInitializationService;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -53,9 +51,6 @@ public class MatchRequestService {
     private final ChatReadStatusRepository chatReadStatusRepository;
     private final QuestInitializationService questInitializationService;
     private final RelationshipSlotService relationshipSlotService;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     @Transactional
     public CreateMatchRequestResponse create(
@@ -316,20 +311,20 @@ public class MatchRequestService {
             Long userId,
             Long requestId
     ) {
-        MatchRequest request = matchRequestRepository.findById(requestId)
+        MatchRequest requestSnapshot = matchRequestRepository.findById(requestId)
                 .orElseThrow(() -> new BaseException(
                         MatchRequestErrorCode.MATCH_REQUEST_NOT_FOUND
                 ));
 
         // 요청 수신자만 수락 가능
-        if (!request.getReceiver().getId().equals(userId)) {
+        if (!requestSnapshot.getReceiver().getId().equals(userId)) {
             throw new BaseException(
                     MatchRequestErrorCode.MATCH_REQUEST_ACCESS_DENIED
             );
         }
 
-        Long senderId = request.getSender().getId();
-        Long receiverId = request.getReceiver().getId();
+        Long senderId = requestSnapshot.getSender().getId();
+        Long receiverId = requestSnapshot.getReceiver().getId();
 
         // 양쪽 사용자 행을 ID 오름차순으로 잠금
         Long firstId = Math.min(senderId, receiverId);
@@ -343,10 +338,16 @@ public class MatchRequestService {
                 .orElseThrow(() ->
                         new BaseException(CommonErrorCode.NOT_FOUND));
 
-        // 잠금 이후 요청 상태 재조회
-        // 기존 findById()는 영속성 컨텍스트의
-        // 캐시를 반환할 수 있으므로 refresh 필요
-        entityManager.refresh(request);
+        MatchRequest request = matchRequestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new BaseException(
+                        MatchRequestErrorCode.MATCH_REQUEST_NOT_FOUND
+                ));
+
+        if (!request.getReceiver().getId().equals(userId)) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_ACCESS_DENIED
+            );
+        }
 
         if (request.getStatus() != MatchRequestStatus.PENDING) {
             throw new BaseException(
