@@ -4,21 +4,24 @@ import com.sujeongring.domain.currency.entity.CurrencyTransaction;
 import com.sujeongring.domain.currency.entity.Wallet;
 import com.sujeongring.domain.currency.enums.CurrencyReason;
 import com.sujeongring.domain.currency.enums.CurrencyTransactionType;
+import com.sujeongring.domain.currency.exception.CurrencyErrorCode;
+import com.sujeongring.domain.currency.exception.CurrencyException;
 import com.sujeongring.domain.currency.repository.CurrencyTransactionRepository;
 import com.sujeongring.domain.currency.repository.WalletRepository;
 
-import com.sujeongring.domain.matching.dto.response.MatchingHomeResponse;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
+import com.sujeongring.domain.matching.entity.MatchRequest;
 import com.sujeongring.domain.matching.entity.MatchUsage;
+import com.sujeongring.domain.matching.enums.MatchRequestStatus;
 import com.sujeongring.domain.matching.enums.MatchUsageType;
 import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.matching.repository.MatchRecommendationRepository;
+import com.sujeongring.domain.matching.repository.MatchRequestRepository;
 import com.sujeongring.domain.matching.repository.MatchUsageRepository;
 import com.sujeongring.domain.matching.service.NormalMatching.DailyFreeMatchingService;
-import com.sujeongring.domain.matching.service.NormalMatching.MatchingHomeService;
 
-import com.sujeongring.domain.relationship.enums.RelationshipStatus;
 import com.sujeongring.domain.relationship.repository.RelationshipRepository;
+import com.sujeongring.domain.relationship.service.RelationshipSlotService;
 import com.sujeongring.domain.user.entity.SajuProfile;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.UserStatus;
@@ -33,8 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -47,9 +50,10 @@ public class SajuMatchingService {
     private final SajuProfileRepository sajuProfileRepository;
     private final MatchRecommendationRepository recommendationRepository;
     private final MatchUsageRepository matchUsageRepository;
+    private final MatchRequestRepository matchRequestRepository;
 
     private final DailyFreeMatchingService dailyFreeMatchingService;
-    private final MatchingHomeService matchingHomeService;
+    private final RelationshipSlotService relationshipSlotService;
 
     private final WalletRepository walletRepository;
     private final CurrencyTransactionRepository currencyTransactionRepository;
@@ -82,15 +86,7 @@ public class SajuMatchingService {
             );
         }
 
-        // 매칭 슬롯 확인
-        MatchingHomeResponse home =
-                matchingHomeService.getHome(userId);
-
-        if (home.relationshipSlots().available() <= 0) {
-            throw new IllegalStateException(
-                    "매칭 슬롯이 모두 사용 중입니다."
-            );
-        }
+        relationshipSlotService.validateAvailableSlot(userId);
 
         // 내 사주 프로필 조회
         SajuProfile myProfile = sajuProfileRepository
@@ -110,17 +106,13 @@ public class SajuMatchingService {
         Wallet wallet = null;
 
         if (!hasFreeMatch) {
-            wallet = walletRepository.findByUserId(userId)
+            wallet = walletRepository.findByUserIdForUpdate(userId)
                     .orElseThrow(() ->
-                            new IllegalStateException(
-                                    "수정구 지갑이 없습니다."
-                            )
+                            new CurrencyException(CurrencyErrorCode.WALLET_NOT_FOUND)
                     );
 
             if (wallet.getBalance() < PAID_MATCH_COST) {
-                throw new IllegalStateException(
-                        "수정구 잔액이 부족합니다."
-                );
+                throw new CurrencyException(CurrencyErrorCode.INSUFFICIENT_CURRENCY_BALANCE);
             }
         }
 
@@ -145,23 +137,59 @@ public class SajuMatchingService {
                 })
                 .collect(Collectors.toSet());
 
-        // 활성 관계 사용자 제외
-        Set<Long> activeRelationshipUserIds =
-                relationshipRepository
-                        .findAllByStatusAndUserAIdOrStatusAndUserBId(
-                                RelationshipStatus.ACTIVE,
-                                userId,
-                                RelationshipStatus.ACTIVE,
-                                userId
-                        )
-                        .stream()
-                        .map(relationship ->
-                                relationship.getUserA().getId()
-                                        .equals(userId)
-                                        ? relationship.getUserB().getId()
-                                        : relationship.getUserA().getId()
-                        )
-                        .collect(Collectors.toSet());
+        // 나와 관계 이력이 있는 사용자(ACTIVE/COMPLETED/ENDED) 제외
+        Set<Long> relationshipExcludedUserIds = relationshipRepository
+                .findAllByUserAIdOrUserBId(userId, userId)
+                .stream()
+                .map(relationship -> {
+                    Long userAId = relationship.getUserA().getId();
+
+                    if (userAId.equals(userId)) {
+                        return relationship.getUserB().getId();
+                    }
+                    return userAId;
+                })
+                .collect(Collectors.toSet());
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 나와 PENDING 요청이 있는 사용자 제외 (보낸/받은 요청 모두)
+        Set<Long> pendingRequestUserIds = java.util.stream.Stream.concat(
+                        matchRequestRepository
+                                .findAllActivePendingBySenderIdOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.PENDING,
+                                        now
+                                )
+                                .stream(),
+                        matchRequestRepository
+                                .findAllActivePendingByReceiverIdOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.PENDING,
+                                        now
+                                )
+                                .stream()
+                )
+                .map(request -> getCounterpartUserId(request, userId))
+                .collect(Collectors.toSet());
+
+        // 나와 REJECTED 이력이 있는 사용자는 재추천 제외
+        Set<Long> rejectedRequestUserIds = java.util.stream.Stream.concat(
+                        matchRequestRepository
+                                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.REJECTED
+                                )
+                                .stream(),
+                        matchRequestRepository
+                                .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(
+                                        userId,
+                                        MatchRequestStatus.REJECTED
+                                )
+                                .stream()
+                )
+                .map(request -> getCounterpartUserId(request, userId))
+                .collect(Collectors.toSet());
 
         // 매칭 가능한 사용자 필터링
         List<User> candidates = userRepository.findAll()
@@ -171,7 +199,9 @@ public class SajuMatchingService {
                 .filter(user -> user.getStatus() == UserStatus.ACTIVE)
                 .filter(user -> !previousCandidateIds.contains(user.getId()))
                 .filter(user -> !blockedUserIds.contains(user.getId()))
-                .filter(user -> !activeRelationshipUserIds.contains(user.getId()))
+                .filter(user -> !relationshipExcludedUserIds.contains(user.getId()))
+                .filter(user -> !pendingRequestUserIds.contains(user.getId()))
+                .filter(user -> !rejectedRequestUserIds.contains(user.getId()))
 
                 .filter(user ->
                         sajuProfileRepository.findByUserId(user.getId())
@@ -274,5 +304,12 @@ public class SajuMatchingService {
         }
 
         return recommendation;
+    }
+
+    private Long getCounterpartUserId(MatchRequest request, Long userId) {
+        if (request.getSender().getId().equals(userId)) {
+            return request.getReceiver().getId();
+        }
+        return request.getSender().getId();
     }
 }

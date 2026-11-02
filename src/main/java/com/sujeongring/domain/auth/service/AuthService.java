@@ -8,6 +8,8 @@ import com.sujeongring.domain.auth.dto.response.SignupResponse;
 import com.sujeongring.domain.auth.dto.response.StudentNumberCheckResponse;
 import com.sujeongring.domain.auth.dto.response.TokenResponse;
 import com.sujeongring.domain.auth.exception.AuthErrorCode;
+import com.sujeongring.domain.currency.entity.Wallet;
+import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.exception.BaseException;
@@ -26,6 +28,7 @@ public class AuthService {
     private static final String VERIFIED_KEY_PREFIX = "email:verified:";
 
     private final UserRepository userRepository;
+    private final WalletRepository walletRepository;
     private final StringRedisTemplate redisTemplate;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -97,6 +100,7 @@ public class AuthService {
         );
 
         User savedUser = userRepository.save(user);
+        walletRepository.save(new Wallet(savedUser));
 
         // 이메일 인증 정보 삭제
         redisTemplate.delete(verifiedKey);

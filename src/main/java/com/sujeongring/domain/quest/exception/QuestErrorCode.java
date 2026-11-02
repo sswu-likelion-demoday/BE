@@ -33,6 +33,12 @@ public enum QuestErrorCode implements ErrorCode {
             "필수 고정 퀘스트를 찾을 수 없습니다."
     ),
 
+    QUEST_INVALID_ORDER(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "QUEST_INVALID_ORDER",
+            "고정 퀘스트 순서가 올바르지 않습니다."
+    ),
+
     QUEST_NOT_FOUND(
             HttpStatus.NOT_FOUND,
             "QUEST_NOT_FOUND",

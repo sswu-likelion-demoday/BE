@@ -84,7 +84,7 @@ public class MatchRequestController {
         matchRequestService.rejectMatchRequest(userId, requestId);
 
         return ApiResponse.success(
-                "알아보기 요청을 거절하였습니다.",
+                "채팅 요청을 거절하였습니다.",
                 null
         );
     }

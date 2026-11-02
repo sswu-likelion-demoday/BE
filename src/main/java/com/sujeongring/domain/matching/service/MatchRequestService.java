@@ -2,6 +2,7 @@
 package com.sujeongring.domain.matching.service;
 
 import com.sujeongring.domain.chat.repository.ChatRoomRepository;
+import com.sujeongring.domain.chat.repository.ChatReadStatusRepository;
 import com.sujeongring.domain.matching.dto.response.matchrequest.CreateMatchRequestResponse;
 import com.sujeongring.domain.matching.entity.MatchRecommendation;
 import com.sujeongring.domain.matching.entity.MatchRequest;
@@ -17,6 +18,7 @@ import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.global.error.CommonErrorCode;
 import com.sujeongring.global.error.exception.BaseException;
 import com.sujeongring.domain.chat.entity.ChatRoom;
+import com.sujeongring.domain.chat.entity.ChatReadStatus;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestItemResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestListResponse;
 import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestUserResponse;
@@ -26,12 +28,11 @@ import com.sujeongring.domain.matching.dto.response.matchrequest.MatchRequestDet
 import com.sujeongring.domain.matching.enums.MatchingType;
 import com.sujeongring.domain.matching.dto.response.matchrequest.AcceptMatchRequestResponse;
 import com.sujeongring.domain.relationship.entity.Relationship;
+import com.sujeongring.domain.quest.service.QuestInitializationService;
 
 
 import java.time.LocalDateTime;
 import java.util.List;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -47,10 +48,9 @@ public class MatchRequestService {
     private final RelationshipRepository relationshipRepository;
     private final BlockRepository blockRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final ChatReadStatusRepository chatReadStatusRepository;
+    private final QuestInitializationService questInitializationService;
     private final RelationshipSlotService relationshipSlotService;
-
-    @PersistenceContext
-    private EntityManager entityManager;
 
     @Transactional
     public CreateMatchRequestResponse create(
@@ -311,20 +311,20 @@ public class MatchRequestService {
             Long userId,
             Long requestId
     ) {
-        MatchRequest request = matchRequestRepository.findById(requestId)
+        MatchRequest requestSnapshot = matchRequestRepository.findById(requestId)
                 .orElseThrow(() -> new BaseException(
                         MatchRequestErrorCode.MATCH_REQUEST_NOT_FOUND
                 ));
 
         // 요청 수신자만 수락 가능
-        if (!request.getReceiver().getId().equals(userId)) {
+        if (!requestSnapshot.getReceiver().getId().equals(userId)) {
             throw new BaseException(
                     MatchRequestErrorCode.MATCH_REQUEST_ACCESS_DENIED
             );
         }
 
-        Long senderId = request.getSender().getId();
-        Long receiverId = request.getReceiver().getId();
+        Long senderId = requestSnapshot.getSender().getId();
+        Long receiverId = requestSnapshot.getReceiver().getId();
 
         // 양쪽 사용자 행을 ID 오름차순으로 잠금
         Long firstId = Math.min(senderId, receiverId);
@@ -338,10 +338,16 @@ public class MatchRequestService {
                 .orElseThrow(() ->
                         new BaseException(CommonErrorCode.NOT_FOUND));
 
-        // 잠금 이후 요청 상태 재조회
-        // 기존 findById()는 영속성 컨텍스트의
-        // 캐시를 반환할 수 있으므로 refresh 필요
-        entityManager.refresh(request);
+        MatchRequest request = matchRequestRepository.findByIdForUpdate(requestId)
+                .orElseThrow(() -> new BaseException(
+                        MatchRequestErrorCode.MATCH_REQUEST_NOT_FOUND
+                ));
+
+        if (!request.getReceiver().getId().equals(userId)) {
+            throw new BaseException(
+                    MatchRequestErrorCode.MATCH_REQUEST_ACCESS_DENIED
+            );
+        }
 
         if (request.getStatus() != MatchRequestStatus.PENDING) {
             throw new BaseException(
@@ -352,6 +358,16 @@ public class MatchRequestService {
         if (!request.getExpiresAt().isAfter(LocalDateTime.now())) {
             throw new BaseException(
                     MatchRequestErrorCode.MATCH_REQUEST_EXPIRED
+            );
+        }
+
+        boolean blocked =
+                blockRepository.existsByBlockerIdAndBlockedId(senderId, receiverId)
+                        || blockRepository.existsByBlockerIdAndBlockedId(receiverId, senderId);
+
+        if (blocked) {
+            throw new BaseException(
+                    MatchRequestErrorCode.BLOCKED_USER
             );
         }
 
@@ -381,6 +397,15 @@ public class MatchRequestService {
         ChatRoom chatRoom = chatRoomRepository.save(
                 new ChatRoom(relationship)
         );
+
+        chatReadStatusRepository.saveAll(
+                List.of(
+                        new ChatReadStatus(chatRoom, relationship.getUserA()),
+                        new ChatReadStatus(chatRoom, relationship.getUserB())
+                )
+        );
+
+        questInitializationService.initializeQuests(relationship);
 
         return new AcceptMatchRequestResponse(
                 request.getId(),

@@ -25,6 +25,34 @@ public interface MatchRequestRepository
             MatchRequestStatus status
     );
 
+    @Query("""
+            SELECT mr
+            FROM MatchRequest mr
+            WHERE mr.sender.id = :senderId
+              AND mr.status = :status
+              AND mr.expiresAt > :now
+            ORDER BY mr.createdAt DESC
+            """)
+    List<MatchRequest> findAllActivePendingBySenderIdOrderByCreatedAtDesc(
+            @Param("senderId") Long senderId,
+            @Param("status") MatchRequestStatus status,
+            @Param("now") LocalDateTime now
+    );
+
+    @Query("""
+            SELECT mr
+            FROM MatchRequest mr
+            WHERE mr.receiver.id = :receiverId
+              AND mr.status = :status
+              AND mr.expiresAt > :now
+            ORDER BY mr.createdAt DESC
+            """)
+    List<MatchRequest> findAllActivePendingByReceiverIdOrderByCreatedAtDesc(
+            @Param("receiverId") Long receiverId,
+            @Param("status") MatchRequestStatus status,
+            @Param("now") LocalDateTime now
+    );
+
     boolean existsByMatchRecommendationId(Long recommendationId);
 
     @Query("""
