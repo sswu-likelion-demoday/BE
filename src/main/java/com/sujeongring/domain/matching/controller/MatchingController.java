@@ -9,6 +9,8 @@ import com.sujeongring.domain.matching.service.NormalMatching.MatchingHomeServic
 import com.sujeongring.domain.matching.service.NormalMatching.NormalMatchingService;
 import com.sujeongring.global.auth.CurrentUserId;
 import com.sujeongring.global.common.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/matching")
+@Tag(name = "매칭", description = "일반/사주 매칭 추천 및 매칭 홈/이용 상태 API")
 public class MatchingController {
 
     private final DailyFreeMatchingService dailyFreeMatchingService;
@@ -35,6 +38,7 @@ public class MatchingController {
     private final SajuProfileService sajuProfileService;
 
     @GetMapping("/home")
+    @Operation(summary = "매칭 홈 조회", description = "매칭 홈 요약 정보를 조회합니다.")
     public ApiResponse<MatchingHomeResponse> getMatchingHome(
             @CurrentUserId Long userId
     ) {
@@ -45,6 +49,7 @@ public class MatchingController {
     }
 
     @GetMapping("/status")
+    @Operation(summary = "매칭 이용 상태 조회", description = "주간 무료 매칭 횟수 및 사용 상태를 조회합니다.")
     public ApiResponse<DailyFreeMatchingStatusResponse> getMatchingStatus(
             @CurrentUserId Long userId
     ) {
@@ -58,6 +63,7 @@ public class MatchingController {
     }
 
     @PostMapping("/recommendations")
+    @Operation(summary = "일반 매칭 추천", description = "온보딩 기반 일반 매칭 후보 1명을 추천합니다.")
     public ApiResponse<NormalMatchingResponse> matchNormal(
             @CurrentUserId Long userId
     ) {
@@ -72,6 +78,7 @@ public class MatchingController {
 
 
     @PostMapping("/saju/recommendations")
+    @Operation(summary = "사주 매칭 추천", description = "사주 궁합 기반 매칭 후보 1명을 추천합니다.")
     public ApiResponse<SajuMatchingResponse> matchSaju(
             @CurrentUserId Long userId
     ) {
@@ -87,6 +94,7 @@ public class MatchingController {
 
     // 사주 매칭 화면 - 현재 설정 조회
     @GetMapping("/saju")
+    @Operation(summary = "사주 매칭 설정 조회", description = "사주 매칭 추천에 사용할 설정을 조회합니다.")
     public ApiResponse<SajuSettingsResponse> getSajuSettings(
             @CurrentUserId Long userId
     ) {
@@ -101,6 +109,7 @@ public class MatchingController {
 
     // 사주 매칭 화면 - 설정 저장
     @PutMapping("/saju")
+    @Operation(summary = "사주 매칭 설정 저장", description = "사주 매칭 추천에 사용할 설정을 저장/수정합니다.")
     public ApiResponse<SajuSettingsResponse> updateSajuSettings(
             @CurrentUserId Long userId,
             @Valid @RequestBody SajuSettingsRequest request

@@ -10,6 +10,8 @@ import com.sujeongring.domain.auth.dto.response.TokenResponse;
 import com.sujeongring.domain.auth.service.AuthService;
 import com.sujeongring.domain.auth.service.EmailVerificationService;
 import com.sujeongring.global.common.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -17,12 +19,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/auth")
+@Tag(name = "인증", description = "회원가입, 로그인, 토큰 재발급, 비밀번호 재설정 API")
 public class AuthController {
 
     private final EmailVerificationService emailVerificationService;
     private final AuthService authService;
 
     @PostMapping("/email/send")
+    @Operation(summary = "이메일 인증번호 발송", description = "회원가입/비밀번호 재설정을 위한 인증번호를 이메일로 발송합니다.")
     public ApiResponse<EmailSendResponse> sendEmail(
             @Valid @RequestBody EmailSendRequest request
     ) {
@@ -36,6 +40,7 @@ public class AuthController {
     }
 
     @PostMapping("/email/verify")
+    @Operation(summary = "이메일 인증번호 검증", description = "발급된 인증번호를 검증해 이메일 인증을 완료합니다.")
     public ApiResponse<EmailVerifyResponse> verifyEmail(
             @Valid @RequestBody EmailVerifyRequest request
     ) {
@@ -52,6 +57,7 @@ public class AuthController {
     }
 
     @GetMapping("/student-numbers/check")
+    @Operation(summary = "학번 중복 확인", description = "회원가입 전 학번 사용 가능 여부를 조회합니다.")
     public ApiResponse<StudentNumberCheckResponse> checkStudentNumber(
             @RequestParam String studentNumber
     ) {
@@ -66,6 +72,7 @@ public class AuthController {
     }
 
     @PostMapping("/signup")
+    @Operation(summary = "회원가입", description = "이메일 인증 완료 사용자를 회원으로 등록합니다.")
     public ApiResponse<SignupResponse> signup(
             @Valid @RequestBody SignupRequest request
     ) {
@@ -79,6 +86,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "로그인", description = "학번/비밀번호로 로그인하고 토큰을 발급합니다.")
     public ApiResponse<LoginResponse> login(
             @Valid @RequestBody LoginRequest request
     ) {
@@ -92,6 +100,7 @@ public class AuthController {
     }
 
     @PostMapping("/reissue")
+    @Operation(summary = "토큰 재발급", description = "리프레시 토큰으로 액세스/리프레시 토큰을 재발급합니다.")
     public ApiResponse<TokenResponse> reissue(
             @Valid @RequestBody TokenReissueRequest request
     ) {
@@ -105,6 +114,7 @@ public class AuthController {
     }
 
     @PostMapping("/password/reset")
+    @Operation(summary = "비밀번호 재설정", description = "이메일 인증 완료 후 비밀번호를 재설정합니다.")
     public ApiResponse<Void> resetPassword(
             @Valid @RequestBody PasswordResetRequest request
     ) {
