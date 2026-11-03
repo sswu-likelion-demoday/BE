@@ -40,7 +40,7 @@ public record SajuMatchingResponse(
         }
 
         return Integer.parseInt(
-                studentNumber.substring(0, 2)
+                studentNumber.substring(2, 4)
         );
     }
 
