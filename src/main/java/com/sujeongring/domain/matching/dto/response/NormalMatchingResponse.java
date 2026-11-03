@@ -16,7 +16,24 @@ public record NormalMatchingResponse(
             Integer admissionYear,
             String profileImageUrl,
             String introduction
-    ) {}
+    ) {
+    }
+
+    //학번 추출
+    private static Integer extractAdmissionYear(String studentNumber) {
+
+        if (studentNumber == null || studentNumber.length() < 4) {
+            return null;
+        }
+        String year = studentNumber.substring(0, 4);
+
+        if (!year.matches("20\\d{2}")) {
+            return null;
+        }
+
+        return Integer.parseInt(year.substring(2, 4));
+    }
+
 
     public static NormalMatchingResponse from(
             MatchRecommendation recommendation
@@ -31,9 +48,10 @@ public record NormalMatchingResponse(
                         candidate.getId(),
                         candidate.getNickname(),
                         null,
-                        candidate.getProfileImageUrl(),
-                        null
+                        null,
+                        recommendation.getIntroduction()
                 )
         );
     }
 }
+

@@ -13,4 +13,12 @@ public interface BlockRepository extends JpaRepository<Block, Long> {
     );
 
     List<Block> findAllByBlockerId(Long blockerId);
+
+    // 내가 차단했거나 나를 차단한 기록 조회
+    List<Block> findAllByBlockerIdOrBlockedId(
+            Long blockerId,
+            Long blockedId
+    );
+
+    void deleteByBlockerIdAndBlockedId(Long blockerId, Long blockedId);
 }

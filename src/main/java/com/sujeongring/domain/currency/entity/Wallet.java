@@ -1,5 +1,7 @@
 package com.sujeongring.domain.currency.entity;
 
+import com.sujeongring.domain.currency.exception.CurrencyErrorCode;
+import com.sujeongring.domain.currency.exception.CurrencyException;
 import com.sujeongring.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -51,13 +53,21 @@ public class Wallet {
 
     public void useCurrency(int amount) {
         if (amount <= 0) {
-            throw new IllegalArgumentException("차감 금액은 0보다 커야 합니다.");
+            throw new CurrencyException(CurrencyErrorCode.INVALID_CURRENCY_AMOUNT);
         }
 
         if (balance < amount) {
-            throw new IllegalStateException("수정구 잔액이 부족합니다.");
+            throw new CurrencyException(CurrencyErrorCode.INSUFFICIENT_CURRENCY_BALANCE);
         }
 
         this.balance -= amount;
+    }
+
+    public void earnCurrency(int amount) {
+        if (amount <= 0) {
+            throw new CurrencyException(CurrencyErrorCode.INVALID_CURRENCY_AMOUNT);
+        }
+
+        this.balance += amount;
     }
 }

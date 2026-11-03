@@ -45,18 +45,24 @@ public class MatchRecommendation {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    // 매칭 추천 이유
+    @Column(name = "introduction", length = 255)
+    private String introduction;
+
     public MatchRecommendation(
             User user,
             User candidate,
             MatchingType matchingType,
             Integer matchingScore,
-            Integer compatibilityScore
+            Integer compatibilityScore,
+            String introduction
     ) {
         this.user = user;
         this.candidate = candidate;
         this.matchingType = matchingType;
         this.matchingScore = matchingScore;
         this.compatibilityScore = compatibilityScore;
+        this.introduction = introduction;
     }
 
     @PrePersist

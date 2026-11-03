@@ -165,6 +165,8 @@ public class QuestInitializationService {
                         )
                 );
 
+        validateFixedQuestIsLast(pool, quizQuest);
+
         List<Quest> candidates = new ArrayList<>(
                 pool.stream()
                         .filter(quest ->
@@ -182,19 +184,20 @@ public class QuestInitializationService {
 
         Collections.shuffle(candidates);
 
-        List<Quest> selected = new ArrayList<>(
+        List<Quest> selectedCandidates = new ArrayList<>(
                 candidates.stream()
                         .limit(randomCount)
                         .toList()
         );
 
-        selected.add(quizQuest);
-
-        selected.sort(
+        selectedCandidates.sort(
                 Comparator.comparingInt(
                         Quest::getQuestOrder
                 )
         );
+
+        List<Quest> selected = new ArrayList<>(selectedCandidates);
+        selected.add(quizQuest);
 
         return selected;
     }
@@ -214,7 +217,26 @@ public class QuestInitializationService {
             );
         }
 
-        return quests;
+        Quest meetingVerificationQuest = quests.stream()
+                .filter(quest -> quest.getQuestType() == QuestType.MEETING_VERIFICATION)
+                .findFirst()
+                .orElseThrow(() ->
+                        new QuestException(
+                                QuestErrorCode.QUEST_FIXED_QUEST_NOT_FOUND,
+                                "4단계 상호 인증 퀘스트가 존재하지 않습니다."
+                        )
+                );
+
+        validateFixedQuestIsLast(quests, meetingVerificationQuest);
+
+        List<Quest> stage4Others = quests.stream()
+                .filter(quest -> !quest.getId().equals(meetingVerificationQuest.getId()))
+                .toList();
+
+        List<Quest> selected = new ArrayList<>(stage4Others);
+        selected.add(meetingVerificationQuest);
+
+        return selected;
     }
 
     private void validateCandidateCount(
@@ -228,6 +250,22 @@ public class QuestInitializationService {
                     QuestErrorCode.QUEST_CANDIDATE_NOT_ENOUGH,
                     stage
                             + "단계 퀘스트 후보가 부족합니다."
+            );
+        }
+    }
+
+    private void validateFixedQuestIsLast(
+            List<Quest> quests,
+            Quest fixedQuest
+    ) {
+        boolean hasLaterQuest = quests.stream()
+                .filter(quest -> !quest.getId().equals(fixedQuest.getId()))
+                .anyMatch(quest -> quest.getQuestOrder() >= fixedQuest.getQuestOrder());
+
+        if (hasLaterQuest) {
+            throw new QuestException(
+                    QuestErrorCode.QUEST_INVALID_ORDER,
+                    "고정 퀘스트는 해당 단계의 마지막 순서여야 합니다."
             );
         }
     }
