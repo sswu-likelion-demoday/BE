@@ -98,6 +98,7 @@ public class AuthService {
                 request.studentNumber(),
                 request.departmentName()
         );
+        user.updateContact(request.contact().trim());
 
         User savedUser = userRepository.save(user);
         walletRepository.save(new Wallet(savedUser));

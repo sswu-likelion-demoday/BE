@@ -22,7 +22,10 @@ public record SignupRequest(
         String nickname,
 
         @NotBlank(message = "학과는 필수입니다.")
-        String departmentName
+        String departmentName,
+
+        @NotBlank(message = "연락 수단은 필수입니다.")
+        String contact
 
 ) {
 }

@@ -33,7 +33,7 @@ public record SajuMatchingResponse(
 
     private static Integer extractAdmissionYear(String studentNumber) {
         if (studentNumber == null ||
-                !studentNumber.matches("\\d{2,4}")) {
+                !studentNumber.matches("\\d{8}")) {
             throw new IllegalArgumentException(
                     "학번 형식이 올바르지 않습니다."
             );
