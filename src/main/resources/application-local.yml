@@ -51,3 +51,7 @@ logging:
   level:
     root: info
     org.hibernate.SQL: debug
+
+aws:
+  s3:
+    prefix: local

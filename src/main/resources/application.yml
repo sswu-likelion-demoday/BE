@@ -46,3 +46,8 @@ springdoc:
 
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
+
+aws:
+  s3:
+    bucket: ${AWS_S3_BUCKET:sujeongring-profile-images}
+    region: ${AWS_REGION:ap-northeast-2}

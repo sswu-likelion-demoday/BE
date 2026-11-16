@@ -105,4 +105,8 @@ public class User {
     public void updateContact(String contact) {
         this.contact = contact;
     }
+
+    public void updateProfileImage(String profileImageKey) {
+        this.profileImageUrl = profileImageKey;
+    }
 }

@@ -40,5 +40,9 @@ logging:
     root: info
     org.hibernate.SQL: warn
 
+aws:
+  s3:
+    prefix: prod
+
 
 
