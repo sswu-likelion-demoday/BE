@@ -1,5 +1,6 @@
 package com.sujeongring.domain.auth.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.sujeongring.domain.auth.dto.request.*;
 import com.sujeongring.domain.auth.dto.response.EmailSendResponse;
 import com.sujeongring.domain.auth.dto.response.EmailVerifyResponse;
@@ -12,9 +13,17 @@ import com.sujeongring.domain.auth.service.EmailVerificationService;
 import com.sujeongring.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.ObjectMapper;
+
+import java.util.Set;
 
 @RestController
 @RequiredArgsConstructor
@@ -24,6 +33,8 @@ public class AuthController {
 
     private final EmailVerificationService emailVerificationService;
     private final AuthService authService;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     @PostMapping("/email/send")
     @Operation(summary = "이메일 인증번호 발송", description = "회원가입/비밀번호 재설정을 위한 인증번호를 이메일로 발송합니다.")
@@ -71,17 +82,33 @@ public class AuthController {
         return ApiResponse.success(message, response);
     }
 
-    @PostMapping("/signup")
-    @Operation(summary = "회원가입", description = "이메일 인증 완료 사용자를 회원으로 등록합니다.")
+    @PostMapping(
+            value = "/signup",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @Operation(
+            summary = "회원가입",
+            description = "회원가입을 진행합니다."
+    )
     public ApiResponse<SignupResponse> signup(
-            @Valid @RequestBody SignupRequest request
+            @RequestPart("request")
+            String requestJson,
+
+            @RequestPart(
+                    value = "profileImage",
+                    required = false
+            )
+            MultipartFile profileImage
     ) {
-        SignupResponse response =
-                authService.signup(request);
+
+        SignupRequest request =
+                parseSignupRequest(requestJson);
 
         return ApiResponse.success(
-                "회원가입이 완료되었습니다.",
-                response
+                authService.signup(
+                        request,
+                        profileImage
+                )
         );
     }
 
@@ -124,5 +151,25 @@ public class AuthController {
                 "비밀번호가 재설정되었습니다.",
                 null
         );
+    }
+
+    private SignupRequest parseSignupRequest(
+            String requestJson
+    ) {
+        final SignupRequest request;
+
+        request = objectMapper.readValue(
+                requestJson,
+                SignupRequest.class
+        );
+
+        Set<ConstraintViolation<SignupRequest>> violations =
+                validator.validate(request);
+
+        if (!violations.isEmpty()) {
+            throw new ConstraintViolationException(violations);
+        }
+
+        return request;
     }
 }

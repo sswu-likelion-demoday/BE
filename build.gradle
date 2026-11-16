@@ -35,6 +35,9 @@ dependencies {
     implementation 'com.openai:openai-java:4.76.0'
     implementation 'com.github.usingsky:KoreanLunarCalendar:0.4.0'
 
+    implementation platform('software.amazon.awssdk:bom:2.35.0')
+    implementation 'software.amazon.awssdk:s3'
+
     compileOnly 'org.projectlombok:lombok'
     runtimeOnly 'com.mysql:mysql-connector-j'
     runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'

@@ -19,6 +19,7 @@ import com.sujeongring.domain.relationship.exception.RelationshipException;
 import com.sujeongring.domain.relationship.policy.RelationshipUnlockPolicy;
 import com.sujeongring.domain.relationship.repository.RelationshipRepository;
 import com.sujeongring.domain.user.entity.User;
+import com.sujeongring.global.s3.ProfileImageResolver;
 import com.sujeongring.domain.user.entity.UserHobby;
 import com.sujeongring.domain.user.entity.UserInterest;
 import com.sujeongring.domain.user.repository.onboarding.UserHobbyRepository;
@@ -45,6 +46,7 @@ public class RelationshipService {
     private final UserInterestRepository userInterestRepository;
     private final UserHobbyRepository userHobbyRepository;
     private final RelationshipUnlockPolicy relationshipUnlockPolicy;
+    private final ProfileImageResolver profileImageResolver;
 
     @Transactional
     public void endRelationship(Long relationshipId, Long userId) {
@@ -122,9 +124,10 @@ public class RelationshipService {
                 new RelationshipProgressResponse.Partner(
                         partner.getId(),
                         partner.getNickname(),
-                        profileImageUnlocked
-                                ? partner.getProfileImageUrl()
-                                : null,
+                        profileImageResolver.resolve(
+                                partner.getProfileImageUrl(),
+                                profileImageUnlocked
+                        ),
                         profileImageUnlocked
                 ),
 
@@ -217,9 +220,10 @@ public class RelationshipService {
 
                 new PartnerProfileResponse.ValueField<>(
                         profileImageUnlocked,
-                        profileImageUnlocked
-                                ? partner.getProfileImageUrl()
-                                : null
+                        profileImageResolver.resolve(
+                                partner.getProfileImageUrl(),
+                                profileImageUnlocked
+                        )
                 ),
 
                 new PartnerProfileResponse.ValuesField(

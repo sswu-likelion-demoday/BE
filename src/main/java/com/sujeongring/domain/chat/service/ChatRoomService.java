@@ -17,6 +17,7 @@ import com.sujeongring.domain.quest.entity.RelationshipQuest;
 import com.sujeongring.domain.quest.enums.RelationshipQuestStatus;
 import com.sujeongring.domain.quest.repository.RelationshipQuestRepository;
 import com.sujeongring.domain.relationship.policy.RelationshipUnlockPolicy;
+import com.sujeongring.global.s3.ProfileImageResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ public class ChatRoomService {
     private final ChatReadStatusRepository chatReadStatusRepository;
     private final RelationshipQuestRepository relationshipQuestRepository;
     private final RelationshipUnlockPolicy relationshipUnlockPolicy;
+    private final ProfileImageResolver profileImageResolver;
 
     public ChatRoomListResponse getChatRooms(Long userId) {
 
@@ -98,9 +100,10 @@ public class ChatRoomService {
                 new ChatRoomDetailResponse.Partner(
                         partner.getId(),
                         partner.getNickname(),
-                        profileImageUnlocked
-                                ? partner.getProfileImageUrl()
-                                : null,
+                        profileImageResolver.resolve(
+                                partner.getProfileImageUrl(),
+                                profileImageUnlocked
+                        ),
                         profileImageUnlocked
                 );
 
@@ -288,9 +291,10 @@ public class ChatRoomService {
                         new ChatRoomListResponse.Partner(
                                 partner.getId(),
                                 partner.getNickname(),
-                                profileImageUnlocked
-                                        ? partner.getProfileImageUrl()
-                                        : null,
+                                profileImageResolver.resolve(
+                                        partner.getProfileImageUrl(),
+                                        profileImageUnlocked
+                                ),
                                 profileImageUnlocked
                         ),
                         relationship.getStatus(),
