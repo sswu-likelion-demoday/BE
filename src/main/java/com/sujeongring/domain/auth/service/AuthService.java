@@ -15,11 +15,13 @@ import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.exception.BaseException;
 import com.sujeongring.global.jwt.JwtTokenProvider;
 import com.sujeongring.domain.auth.dto.request.PasswordResetRequest;
+import com.sujeongring.global.s3.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +35,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final S3Service s3Service;
 
     /**
      * 학번 중복 확인
@@ -51,7 +54,10 @@ public class AuthService {
      * 회원가입
      */
     @Transactional
-    public SignupResponse signup(SignupRequest request) {
+    public SignupResponse signup(
+            SignupRequest request,
+            MultipartFile profileImage
+    ) {
 
         // 이메일 인증 여부 확인
         String verifiedKey =
@@ -80,7 +86,9 @@ public class AuthService {
         }
 
         // 학번 중복 재확인
-        if (userRepository.existsByStudentNumber(request.studentNumber())) {
+        if (userRepository.existsByStudentNumber(
+                request.studentNumber()
+        )) {
             throw new BaseException(
                     AuthErrorCode.DUPLICATE_STUDENT_NUMBER
             );
@@ -90,6 +98,19 @@ public class AuthService {
         String encodedPassword =
                 passwordEncoder.encode(request.password());
 
+        /*
+         * 회원가입 검증이 끝난 뒤 프로필 이미지를 S3에 업로드한다.
+         *
+         * 반환되는 값은 URL이 아니라
+         * ex) prod/profile-images/uuid.jpg 형태의 objectKey이다.
+         */
+        String profileImageKey = null;
+
+        if (profileImage != null && !profileImage.isEmpty()) {
+            profileImageKey =
+                    s3Service.uploadProfileImage(profileImage);
+        }
+
         // User 생성
         User user = new User(
                 request.name(),
@@ -98,10 +119,25 @@ public class AuthService {
                 request.studentNumber(),
                 request.departmentName()
         );
-        user.updateContact(request.contact().trim());
 
-        User savedUser = userRepository.save(user);
-        walletRepository.save(new Wallet(savedUser));
+        user.updateContact(
+                request.contact().trim()
+        );
+
+        /*
+         * profileImageUrl 컬럼에는
+         * 실제 URL이 아닌 S3 objectKey를 저장한다.
+         */
+        if (profileImageKey != null) {
+            user.updateProfileImage(profileImageKey);
+        }
+
+        User savedUser =
+                userRepository.save(user);
+
+        walletRepository.save(
+                new Wallet(savedUser)
+        );
 
         // 이메일 인증 정보 삭제
         redisTemplate.delete(verifiedKey);

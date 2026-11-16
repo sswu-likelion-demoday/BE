@@ -17,6 +17,7 @@ import com.sujeongring.domain.user.entity.User;
 import com.sujeongring.domain.user.enums.MbtiType;
 import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.CommonErrorCode;
+import com.sujeongring.global.s3.ProfileImageResolver;
 import com.sujeongring.global.error.exception.BaseException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class CategoryMatchService {
     private final CategoryMatchProcessor categoryMatchProcessor;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    private final ProfileImageResolver profileImageResolver;
 
     @Transactional(readOnly = true)
     public CategoryMatchStatusResponse getStatus(Long userId) {
@@ -196,7 +198,10 @@ public class CategoryMatchService {
                             matchedUser.getName(),
                             matchedUser.getDepartmentName(),
                             extractAdmissionYear(matchedUser.getStudentNumber()),
-                            matchedUser.getProfileImageUrl(),
+                            profileImageResolver.resolve(
+                                    matchedUser.getProfileImageUrl(),
+                                    true
+                            ),
                             matchedUser.getMbti(),
                             matchedUser.getContact()
                     );
