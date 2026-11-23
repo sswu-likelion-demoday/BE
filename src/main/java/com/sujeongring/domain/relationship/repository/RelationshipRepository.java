@@ -1,12 +1,14 @@
 
 package com.sujeongring.domain.relationship.repository;
 
+import com.sujeongring.domain.chat.entity.ChatRoom;
 import com.sujeongring.domain.relationship.entity.Relationship;
 import com.sujeongring.domain.relationship.enums.RelationshipStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -60,4 +62,5 @@ public interface RelationshipRepository
             @Param("userBId") Long userBId,
             @Param("statuses") Collection<RelationshipStatus> statuses
     );
+
 }
