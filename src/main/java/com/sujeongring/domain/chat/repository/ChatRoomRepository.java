@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -46,5 +47,31 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, Long> {
         """)
     Optional<ChatRoom> findByRelationshipId(
             @Param("relationshipId") Long relationshipId
+    );
+
+    @Query("""
+    SELECT cr
+    FROM ChatRoom cr
+    JOIN cr.relationship r
+    WHERE r.matchRequest.id = :requestId
+    """)
+    Optional<ChatRoom> findByMatchRequestId(
+            @Param("requestId") Long requestId
+    );
+
+    @Query("""
+       SELECT cr
+       FROM ChatRoom cr
+       JOIN FETCH cr.relationship r
+       JOIN FETCH r.userA
+       JOIN FETCH r.userB
+       WHERE (r.userA.id = :userId OR r.userB.id = :userId)
+         AND r.status IN :statuses
+         AND r.startedAt >= :oneMonthAgo
+       """)
+    List<ChatRoom> findRelationshipMapRooms(
+            @Param("userId") Long userId,
+            @Param("statuses") Collection<RelationshipStatus> statuses,
+            @Param("oneMonthAgo") LocalDateTime oneMonthAgo
     );
 }

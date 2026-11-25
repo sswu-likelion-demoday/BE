@@ -118,4 +118,12 @@ public class User {
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
     }
+
+    public void updateContact(String contact) {
+        this.contact = contact;
+    }
+
+    public void updateProfileImage(String profileImageKey) {
+        this.profileImageUrl = profileImageKey;
+    }
 }

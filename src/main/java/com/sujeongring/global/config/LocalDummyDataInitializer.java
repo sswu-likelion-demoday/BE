@@ -15,7 +15,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List;
 
 @Component
-@Profile("local")
+@Profile("dummy")
 @RequiredArgsConstructor
 public class LocalDummyDataInitializer implements CommandLineRunner {
 

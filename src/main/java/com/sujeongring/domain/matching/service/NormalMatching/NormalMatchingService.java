@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -133,18 +134,22 @@ public class NormalMatchingService {
                 })
                 .collect(Collectors.toSet());
 
+        LocalDateTime now = LocalDateTime.now();
+
         // 나와 PENDING 요청이 있는 사용자 제외 (보낸/받은 요청 모두)
         Set<Long> pendingRequestUserIds = java.util.stream.Stream.concat(
                         matchRequestRepository
-                                .findAllBySenderIdAndStatusOrderByCreatedAtDesc(
+                                .findAllActivePendingBySenderIdOrderByCreatedAtDesc(
                                         userId,
-                                        MatchRequestStatus.PENDING
+                                        MatchRequestStatus.PENDING,
+                                        now
                                 )
                                 .stream(),
                         matchRequestRepository
-                                .findAllByReceiverIdAndStatusOrderByCreatedAtDesc(
+                                .findAllActivePendingByReceiverIdOrderByCreatedAtDesc(
                                         userId,
-                                        MatchRequestStatus.PENDING
+                                        MatchRequestStatus.PENDING,
+                                        now
                                 )
                                 .stream()
                 )

@@ -12,7 +12,15 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "match_requests")
+@Table(
+        name = "match_requests",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_match_requests_recommendation",
+                        columnNames = {"match_recommendation_id"}
+                )
+        }
+)
 public class MatchRequest {
 
     @Id
