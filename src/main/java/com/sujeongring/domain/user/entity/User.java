@@ -126,4 +126,9 @@ public class User {
     public void updateMbti(MbtiType mbti) {
         this.mbti = mbti;
     }
+
+    // 회원 탈퇴
+    public void withdraw() {
+        this.status = UserStatus.WITHDRAWN;
+    }
 }

@@ -1,5 +1,9 @@
 package com.sujeongring.global.jwt;
 
+import com.sujeongring.domain.user.entity.User;
+import com.sujeongring.domain.user.enums.UserStatus;
+import com.sujeongring.domain.user.repository.UserRepository;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(
@@ -45,6 +50,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         Long userId = jwtTokenProvider.getUserId(token);
 
+        // 사용자 존재 여부 확인
+        User user = userRepository.findById(userId)
+                .orElse(null);
+
+        // 존재하지 않거나 탈퇴한 사용자 인증 제한
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+
+            SecurityContextHolder.clearContext();
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         UsernamePasswordAuthenticationToken authentication =
                 new UsernamePasswordAuthenticationToken(
                         userId,
@@ -57,11 +74,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         .buildDetails(request)
         );
 
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        SecurityContextHolder.getContext()
+                .setAuthentication(authentication);
+
         filterChain.doFilter(request, response);
     }
 
-    private String resolveAccessToken(HttpServletRequest request) {
+    private String resolveAccessToken(
+            HttpServletRequest request
+    ) {
+
         String authorizationHeader =
                 request.getHeader(HttpHeaders.AUTHORIZATION);
 
@@ -70,6 +92,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return null;
         }
 
-        return authorizationHeader.substring(BEARER_PREFIX.length());
+        return authorizationHeader.substring(
+                BEARER_PREFIX.length()
+        );
     }
 }
