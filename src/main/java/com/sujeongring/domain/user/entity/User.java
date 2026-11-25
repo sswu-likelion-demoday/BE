@@ -86,7 +86,7 @@ public class User {
         this.onboardingCompleted = true;
     }
 
-    public void updateProfile(
+        public void updateProfile(
             String nickname,
             String departmentName
     ) {
@@ -123,7 +123,7 @@ public class User {
         this.contact = contact;
     }
 
-    public void updateProfileImage(String profileImageKey) {
-        this.profileImageUrl = profileImageKey;
+    public void updateMbti(MbtiType mbti) {
+        this.mbti = mbti;
     }
 }
