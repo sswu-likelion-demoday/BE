@@ -86,6 +86,23 @@ public class User {
         this.onboardingCompleted = true;
     }
 
+        public void updateProfile(
+            String nickname,
+            String departmentName
+    ) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+
+        if (departmentName != null) {
+            this.departmentName = departmentName;
+        }
+    }
+
+    public void updateProfileImage(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
     @PrePersist
     protected void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -106,7 +123,7 @@ public class User {
         this.contact = contact;
     }
 
-    public void updateProfileImage(String profileImageKey) {
-        this.profileImageUrl = profileImageKey;
+    public void updateMbti(MbtiType mbti) {
+        this.mbti = mbti;
     }
 }
