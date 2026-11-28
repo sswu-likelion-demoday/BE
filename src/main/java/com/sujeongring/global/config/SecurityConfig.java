@@ -10,6 +10,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 public class SecurityConfig {
@@ -53,17 +54,24 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         ).permitAll()
 
+                        // 로그아웃은 JWT 인증 필수
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/auth/logout"
+                        ).authenticated()
+
                         // 회원가입 / 로그인 / 이메일 인증
                         .requestMatchers(
                                 "/auth/**"
                         ).permitAll()
 
+                        // WebSocket
                         .requestMatchers(
                                 "/ws",
                                 "/ws/**"
                         ).permitAll()
 
-                        // 나머지는 일단 인증 필요
+                        // 나머지 API는 인증 필요
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

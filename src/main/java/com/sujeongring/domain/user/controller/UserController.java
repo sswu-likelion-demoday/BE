@@ -12,6 +12,8 @@ import com.sujeongring.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
 @RequiredArgsConstructor
@@ -100,6 +102,21 @@ public class UserController {
         return ApiResponse.success(
                 "매칭 정보를 수정하였습니다.",
                 response
+        );
+    }
+
+    // 회원 탈퇴
+    @Operation(summary = "회원 탈퇴")
+    @DeleteMapping("/me")
+    public ApiResponse<Void> withdraw(
+            @CurrentUserId Long userId
+    ) {
+
+        myPageService.withdraw(userId);
+
+        return ApiResponse.success(
+                "회원 탈퇴가 완료되었습니다.",
+                null
         );
     }
 }

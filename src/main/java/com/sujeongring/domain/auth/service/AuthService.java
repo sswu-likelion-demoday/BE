@@ -11,6 +11,7 @@ import com.sujeongring.domain.auth.exception.AuthErrorCode;
 import com.sujeongring.domain.currency.entity.Wallet;
 import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.user.entity.User;
+import com.sujeongring.domain.user.enums.UserStatus;
 import com.sujeongring.domain.user.repository.UserRepository;
 import com.sujeongring.global.error.exception.BaseException;
 import com.sujeongring.global.jwt.JwtTokenProvider;
@@ -173,6 +174,13 @@ public class AuthService {
             );
         }
 
+        // 탈퇴한 사용자 로그인 제한
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BaseException(
+                    AuthErrorCode.INVALID_CREDENTIALS
+            );
+        }
+
         String accessToken =
                 jwtTokenProvider.createAccessToken(user.getId());
 
@@ -285,5 +293,14 @@ public class AuthService {
 
         // 인증 정보 삭제
         redisTemplate.delete(verifiedKey);
+    }
+
+    /**
+     * 로그아웃
+     */
+    public void logout(Long userId) {
+
+        // Redis에 저장된 Refresh Token 삭제
+        refreshTokenService.delete(userId);
     }
 }

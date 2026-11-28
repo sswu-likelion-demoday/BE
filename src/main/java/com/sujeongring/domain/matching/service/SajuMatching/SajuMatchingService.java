@@ -290,7 +290,8 @@ public class SajuMatchingService {
                             CurrencyTransactionType.USE,
                             CurrencyReason.EXTRA_MATCH,
                             PAID_MATCH_COST,
-                            wallet.getBalance()
+                            wallet.getBalance(),
+                            "추가 매칭 이용"
                     )
             );
 

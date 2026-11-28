@@ -1,6 +1,5 @@
 package com.sujeongring.domain.user.service;
 
-import com.sujeongring.domain.currency.entity.Wallet;
 import com.sujeongring.domain.currency.repository.WalletRepository;
 import com.sujeongring.domain.user.dto.response.MatchingProfileResponse;
 import com.sujeongring.domain.user.dto.response.MyPageHomeResponse;
@@ -23,6 +22,9 @@ import com.sujeongring.domain.user.entity.UserInterest;
 import com.sujeongring.domain.user.entity.UserHobby;
 import com.sujeongring.domain.user.entity.UserFriendType;
 import com.sujeongring.domain.user.dto.request.MatchingProfileUpdateRequest;
+import com.sujeongring.domain.user.enums.UserStatus;
+import com.sujeongring.domain.auth.service.RefreshTokenService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.Objects;
@@ -41,6 +43,7 @@ public class UserService {
     private final UserHobbyRepository hobbyRepository;
     private final UserFriendTypeRepository friendTypeRepository;
     private final SajuProfileRepository sajuProfileRepository;
+    private final RefreshTokenService refreshTokenService;
 
     public MyPageHomeResponse getMyPageHome(Long userId) {
 
@@ -380,6 +383,32 @@ public class UserService {
                     fieldName + "에 중복되거나 유효하지 않은 값이 있습니다."
             );
         }
+    }
+
+    // 회원 탈퇴
+    @Transactional
+    public void withdraw(Long userId) {
+
+        // 1. 로그인한 사용자 조회
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "사용자를 찾을 수 없습니다."
+                        )
+                );
+
+        // 2. 이미 탈퇴한 회원인지 확인
+        if (user.getStatus() == UserStatus.WITHDRAWN) {
+            throw new IllegalStateException(
+                    "이미 탈퇴한 회원입니다."
+            );
+        }
+
+        // 3. 회원 상태 변경
+        user.withdraw();
+
+        // 4. Refresh Token 삭제
+        refreshTokenService.delete(userId);
     }
 }
 
