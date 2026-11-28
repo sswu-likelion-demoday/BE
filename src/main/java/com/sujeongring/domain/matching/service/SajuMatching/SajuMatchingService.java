@@ -97,6 +97,19 @@ public class SajuMatchingService {
                         )
                 );
 
+        // 사주 매칭 활성화 여부 검증
+        if (!myProfile.isMatchingEnabled()) {
+            throw new IllegalStateException(
+                    "사주 매칭이 비활성화되어 있습니다."
+            );
+        }
+        if (myProfile.getCalendarType() == null
+                || myProfile.getBirthDate() == null) {
+            throw new IllegalStateException(
+                    "필수 사주 정보가 등록되지 않았습니다."
+            );
+        }
+
         // 무료 매칭 횟수 확인
         boolean hasFreeMatch = dailyFreeMatchingService
                 .getStatus(userId)
