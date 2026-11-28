@@ -120,9 +120,12 @@ public class AiQuizAnswerService {
 
         if (correct) {
             reward += grantReward(
-                    relationship.getUserA().getId().equals(userId) ? relationship.getUserA() : relationship.getUserB(),
+                    relationship.getUserA().getId().equals(userId)
+                            ? relationship.getUserA()
+                            : relationship.getUserB(),
                     QUIZ_CORRECT_REWARD,
-                    CurrencyReason.QUEST_REWARD
+                    CurrencyReason.QUEST_REWARD,
+                    relationshipQuest.getQuest().getTitle()
             );
         }
 
@@ -228,9 +231,18 @@ public class AiQuizAnswerService {
         };
     }
 
-    private int grantReward(User user, int amount, CurrencyReason reason) {
-        Wallet wallet = walletRepository.findByUserIdForUpdate(user.getId())
-                .orElseGet(() -> walletRepository.save(new Wallet(user)));
+    private int grantReward(
+            User user,
+            int amount,
+            CurrencyReason reason,
+            String description
+    ) {
+
+        Wallet wallet = walletRepository
+                .findByUserIdForUpdate(user.getId())
+                .orElseGet(() ->
+                        walletRepository.save(new Wallet(user))
+                );
 
         wallet.earnCurrency(amount);
 
@@ -240,7 +252,8 @@ public class AiQuizAnswerService {
                         CurrencyTransactionType.EARN,
                         reason,
                         amount,
-                        wallet.getBalance()
+                        wallet.getBalance(),
+                        description
                 )
         );
 

@@ -22,6 +22,7 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import tools.jackson.databind.ObjectMapper;
+import com.sujeongring.global.auth.CurrentUserId;
 
 import java.util.Set;
 
@@ -171,5 +172,22 @@ public class AuthController {
         }
 
         return request;
+    }
+
+    @PostMapping("/logout")
+    @Operation(
+            summary = "로그아웃",
+            description = "저장된 Refresh Token을 삭제합니다."
+    )
+    public ApiResponse<Void> logout(
+            @CurrentUserId Long userId
+    ) {
+
+        authService.logout(userId);
+
+        return ApiResponse.success(
+                "로그아웃되었습니다.",
+                null
+        );
     }
 }

@@ -145,7 +145,7 @@ public class QuestProgressService {
         if (completedStage == 4) {
 
             relationship.complete();
-            grantStageCompletionReward(relationship);
+            grantStageCompletionReward(relationship, completedStage);
 
             return QuestCompletionResult.relationshipCompleted(
                     relationship.getId(),
@@ -176,7 +176,7 @@ public class QuestProgressService {
                         );
 
         firstQuest.activate();
-        grantStageCompletionReward(relationship);
+        grantStageCompletionReward(relationship, completedStage);
 
         return QuestCompletionResult.stageCompleted(
                 relationship.getId(),
@@ -217,18 +217,45 @@ public class QuestProgressService {
         }
     }
 
-    private void grantStageCompletionReward(Relationship relationship) {
-        grantReward(relationship.getUserA(), STAGE_COMPLETE_REWARD, CurrencyReason.RELATIONSHIP_REWARD);
-        grantReward(relationship.getUserB(), STAGE_COMPLETE_REWARD, CurrencyReason.RELATIONSHIP_REWARD);
+    private void grantStageCompletionReward(
+            Relationship relationship,
+            int completedStage
+    ) {
+
+        User userA = relationship.getUserA();
+        User userB = relationship.getUserB();
+
+        // 사용자 A에게 관계 단계 달성 보상 지급
+        grantReward(
+                userA,
+                STAGE_COMPLETE_REWARD,
+                CurrencyReason.RELATIONSHIP_REWARD,
+                userB.getNickname() + "님과 "
+                        + completedStage + "단계"
+        );
+
+        // 사용자 B에게 관계 단계 달성 보상 지급
+        grantReward(
+                userB,
+                STAGE_COMPLETE_REWARD,
+                CurrencyReason.RELATIONSHIP_REWARD,
+                userA.getNickname() + "님과 "
+                        + completedStage + "단계"
+        );
     }
 
     private void grantReward(
             User user,
             int amount,
-            CurrencyReason reason
+            CurrencyReason reason,
+            String description
     ) {
-        Wallet wallet = walletRepository.findByUserIdForUpdate(user.getId())
-                .orElseGet(() -> walletRepository.save(new Wallet(user)));
+
+        Wallet wallet = walletRepository
+                .findByUserIdForUpdate(user.getId())
+                .orElseGet(() ->
+                        walletRepository.save(new Wallet(user))
+                );
 
         wallet.earnCurrency(amount);
 
@@ -238,7 +265,8 @@ public class QuestProgressService {
                         CurrencyTransactionType.EARN,
                         reason,
                         amount,
-                        wallet.getBalance()
+                        wallet.getBalance(),
+                        description
                 )
         );
     }

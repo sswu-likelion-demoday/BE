@@ -41,20 +41,25 @@ public class CurrencyTransaction {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "description", length = 255)
+    private String description;
+
+    // 상세 거래 사유를 포함하는 생성자
     public CurrencyTransaction(
             Wallet wallet,
             CurrencyTransactionType transactionType,
             CurrencyReason reason,
             int amount,
-            int balanceAfter
+            int balanceAfter,
+            String description
     ) {
         this.wallet = wallet;
         this.transactionType = transactionType;
         this.reason = reason;
         this.amount = amount;
         this.balanceAfter = balanceAfter;
+        this.description = description;
     }
-
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
